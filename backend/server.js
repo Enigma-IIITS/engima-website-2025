@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const path = require("path");
 const connectDB = require("./config/database");
 const { basicLimiter, authLimiter } = require("./middleware/rateLimiter");
 require("dotenv").config();
@@ -44,6 +45,13 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/users", require("./routes/users"));
 app.use("/api/events", require("./routes/events"));
+app.use("/api/rsvp", require("./routes/rsvp"));
+app.use("/api/feedback", require("./routes/feedback"));
+app.use("/api/showcase", require("./routes/showcase"));
+app.use("/api/members", require("./routes/members"));
+
+// Serve static files for uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
