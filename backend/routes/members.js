@@ -376,9 +376,9 @@ router.get("/", async (req, res) => {
 
     // Fix domain filtering - make more flexible with ObjectId conversion
     if (domain) {
-      const mongoose = require('mongoose');
+      const mongoose = require("mongoose");
       let domainId;
-      
+
       if (mongoose.Types.ObjectId.isValid(domain)) {
         domainId = new mongoose.Types.ObjectId(domain);
       } else {
@@ -388,16 +388,16 @@ router.get("/", async (req, res) => {
       // Try both approaches
       query.$or = [
         {
-          "roles": {
+          roles: {
             $elemMatch: {
               domain: domainId,
               isActive: true,
             },
-          }
+          },
         },
         {
           "roles.domain": domainId,
-        }
+        },
       ];
     }
 
@@ -410,7 +410,7 @@ router.get("/", async (req, res) => {
       if (query.$or) {
         query.$or[0]["roles"].$elemMatch.position = position;
       }
-    }    GET /api/members?status=all
+    }
 
     if (skills) {
       const skillArray = skills.split(",").map((skill) => skill.trim());
@@ -469,15 +469,17 @@ router.get("/", async (req, res) => {
         }
 
         // Check how many members have ANY roles
-        const membersWithRoles = await Member.find({ "roles.0": { $exists: true } }).limit(5);
+        const membersWithRoles = await Member.find({
+          "roles.0": { $exists: true },
+        }).limit(5);
         console.log(`Members with roles: ${membersWithRoles.length}`);
 
         // Check specific domain matches
-        const mongoose = require('mongoose');
+        const mongoose = require("mongoose");
         const domainMatches = await Member.find({
-          "roles.domain": mongoose.Types.ObjectId.isValid(domain) 
-            ? new mongoose.Types.ObjectId(domain) 
-            : domain
+          "roles.domain": mongoose.Types.ObjectId.isValid(domain)
+            ? new mongoose.Types.ObjectId(domain)
+            : domain,
         }).limit(5);
         console.log(`Members with domain ${domain}: ${domainMatches.length}`);
       }
