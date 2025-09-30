@@ -9,6 +9,7 @@ import FocusCardsDemo1 from "./Teams1";
 import ClubDomains from "./ClubDomains";
 import PastEvents from "./PastEvents";
 import Footer from "./Footer";
+import FeedbackForm from "./feedback";
 
 // Responsive grid sizes
 const MOBILE_ROWS = 12;
@@ -222,6 +223,9 @@ export default function BackgroundRippleEffectDemo() {
         </div>
         <div id="Team1" className="pointer-events-auto">
           <FocusCardsDemo1 />
+        </div>
+        <div id="feedback" className="pointer-events-auto">
+          <FeedbackForm/>
         </div>
 
         {/* The original "digital abyss" footer text */}
