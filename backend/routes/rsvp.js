@@ -1,10 +1,16 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const RSVP = require("../models/RSVP");
 const Event = require("../models/Event");
-const { auth, authorizeRoles } = require("../middleware/auth");
+const {
+  auth,
+  authorizeRoles,
+  moderator,
+  admin,
+} = require("../middleware/auth");
 const { validateRSVP, validateRSVPUpdate } = require("../utils/validation");
-const { successResponse, errorResponse } = require("../utils/response");
+const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 
 /**
  * @route   POST /api/rsvp
@@ -16,7 +22,7 @@ router.post("/", auth, async (req, res) => {
     // Validate input
     const errors = validateRSVP(req.body);
     if (errors.length > 0) {
-      return errorResponse(res, "Validation failed", 400, errors);
+      return sendErrorResponse(res, "Validation failed", 400, errors);
     }
 
     const { eventId, contactInfo, additionalInfo } = req.body;
@@ -25,17 +31,17 @@ router.post("/", auth, async (req, res) => {
     // Check if event exists and is open for registration
     const event = await Event.findById(eventId);
     if (!event) {
-      return errorResponse(res, "Event not found", 404);
+      return sendErrorResponse(res, "Event not found", 404);
     }
 
     // Check if registration is open
     const now = new Date();
     if (now < event.registrationStartDate) {
-      return errorResponse(res, "Registration has not started yet", 400);
+      return sendErrorResponse(res, "Registration has not started yet", 400);
     }
 
     if (now > event.registrationEndDate) {
-      return errorResponse(res, "Registration has ended", 400);
+      return sendErrorResponse(res, "Registration has ended", 400);
     }
 
     // Check if user is already registered
@@ -45,7 +51,7 @@ router.post("/", auth, async (req, res) => {
     });
 
     if (existingRSVP) {
-      return errorResponse(
+      return sendErrorResponse(
         res,
         "You are already registered for this event",
         400
@@ -69,7 +75,7 @@ router.post("/", auth, async (req, res) => {
 
       await rsvp.save();
 
-      return successResponse(
+      return sendSuccessResponse(
         res,
         "Added to waitlist - Event is full",
         {
@@ -105,10 +111,10 @@ router.post("/", auth, async (req, res) => {
       { path: "event", select: "title startDate venue registrationFee" },
     ]);
 
-    successResponse(res, "Successfully registered for event", rsvp, 201);
+    sendSuccessResponse(res, "Successfully registered for event", rsvp, 201);
   } catch (error) {
     console.error("Registration error:", error);
-    errorResponse(res, "Failed to register for event", 500);
+    sendErrorResponse(res, "Failed to register for event", 500);
   }
 });
 
@@ -131,7 +137,7 @@ router.get("/my-registrations", auth, async (req, res) => {
       ...(status && { status }),
     });
 
-    successResponse(res, "Registrations retrieved successfully", {
+    sendSuccessResponse(res, "Registrations retrieved successfully", {
       registrations,
       pagination: {
         currentPage: parseInt(page),
@@ -143,7 +149,7 @@ router.get("/my-registrations", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("Get registrations error:", error);
-    errorResponse(res, "Failed to retrieve registrations", 500);
+    sendErrorResponse(res, "Failed to retrieve registrations", 500);
   }
 });
 
@@ -152,86 +158,81 @@ router.get("/my-registrations", auth, async (req, res) => {
  * @desc    Get all registrations for an event (Admin only)
  * @access  Private (Admin/Organizer)
  */
-router.get(
-  "/event/:eventId",
-  auth,
-  authorizeRoles(["admin", "organizer"]),
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
-      const { status, page = 1, limit = 50, export: exportData } = req.query;
+router.get("/event/:eventId", auth, moderator, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { status, page = 1, limit = 50, export: exportData } = req.query;
 
-      // Check if user has permission to view this event's registrations
-      const event = await Event.findById(eventId);
-      if (!event) {
-        return errorResponse(res, "Event not found", 404);
-      }
-
-      // Check if user is organizer of this event
-      if (
-        req.user.role !== "admin" &&
-        !event.organizers.includes(req.user.id) &&
-        !event.coordinators.includes(req.user.id)
-      ) {
-        return errorResponse(
-          res,
-          "Not authorized to view registrations for this event",
-          403
-        );
-      }
-
-      if (exportData === "true") {
-        // Export all registrations without pagination
-        const registrations = await RSVP.getEventRegistrations(eventId, status);
-
-        // Format for CSV export
-        const csvData = registrations.map((rsvp) => ({
-          registrationId: rsvp.registrationId,
-          name: rsvp.user.name,
-          email: rsvp.contactInfo.email,
-          phone: rsvp.contactInfo.phone,
-          status: rsvp.status,
-          registeredAt: rsvp.registeredAt,
-          teamName: rsvp.additionalInfo?.teamName || "",
-          specialNeeds: rsvp.additionalInfo?.specialNeeds || "",
-          paymentStatus: rsvp.payment.status,
-        }));
-
-        return successResponse(res, "Registrations exported successfully", {
-          data: csvData,
-          count: csvData.length,
-        });
-      }
-
-      const registrations = await RSVP.getEventRegistrations(eventId, status)
-        .limit(limit * 1)
-        .skip((page - 1) * limit);
-
-      const total = await RSVP.countDocuments({
-        event: eventId,
-        ...(status && { status }),
-      });
-
-      // Get registration statistics
-      const stats = await RSVP.getRegistrationStats(eventId);
-
-      successResponse(res, "Event registrations retrieved successfully", {
-        registrations,
-        stats,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
-          totalCount: total,
-          hasNext: page < Math.ceil(total / limit),
-          hasPrev: page > 1,
-        },
-      });
-    } catch (error) {
-      console.error("Get event registrations error:", error);
-      errorResponse(res, "Failed to retrieve event registrations", 500);
+    // Check if user has permission to view this event's registrations
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return sendErrorResponse(res, "Event not found", 404);
     }
+
+    // Check if user is organizer of this event
+    if (
+      req.user.role !== "admin" &&
+      !event.organizers.includes(req.user.id) &&
+      !event.coordinators.includes(req.user.id)
+    ) {
+      return sendErrorResponse(
+        res,
+        "Not authorized to view registrations for this event",
+        403
+      );
+    }
+
+    if (exportData === "true") {
+      // Export all registrations without pagination
+      const registrations = await RSVP.getEventRegistrations(eventId, status);
+
+      // Format for CSV export
+      const csvData = registrations.map((rsvp) => ({
+        registrationId: rsvp.registrationId,
+        name: rsvp.user.name,
+        email: rsvp.contactInfo.email,
+        phone: rsvp.contactInfo.phone,
+        status: rsvp.status,
+        registeredAt: rsvp.registeredAt,
+        teamName: rsvp.additionalInfo?.teamName || "",
+        specialNeeds: rsvp.additionalInfo?.specialNeeds || "",
+        paymentStatus: rsvp.payment.status,
+      }));
+
+      return sendSuccessResponse(res, "Registrations exported successfully", {
+        data: csvData,
+        count: csvData.length,
+      });
+    }
+
+    const registrations = await RSVP.getEventRegistrations(eventId, status)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await RSVP.countDocuments({
+      event: eventId,
+      ...(status && { status }),
+    });
+
+    // Get registration statistics
+    const stats = await RSVP.getRegistrationStats(eventId);
+
+    sendSuccessResponse(res, "Event registrations retrieved successfully", {
+      registrations,
+      stats,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalCount: total,
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get event registrations error:", error);
+    sendErrorResponse(res, "Failed to retrieve event registrations", 500);
   }
-);
+});
 
 /**
  * @route   PUT /api/rsvp/:rsvpId
@@ -243,7 +244,7 @@ router.put("/:rsvpId", auth, async (req, res) => {
     // Validate input
     const errors = validateRSVPUpdate(req.body);
     if (errors.length > 0) {
-      return errorResponse(res, "Validation failed", 400, errors);
+      return sendErrorResponse(res, "Validation failed", 400, errors);
     }
 
     const { rsvpId } = req.params;
@@ -251,7 +252,7 @@ router.put("/:rsvpId", auth, async (req, res) => {
 
     const rsvp = await RSVP.findById(rsvpId);
     if (!rsvp) {
-      return errorResponse(res, "Registration not found", 404);
+      return sendErrorResponse(res, "Registration not found", 404);
     }
 
     // Check if user owns this registration or is admin/organizer
@@ -261,7 +262,7 @@ router.put("/:rsvpId", auth, async (req, res) => {
         !event.organizers.includes(userId) &&
         !event.coordinators.includes(userId)
       ) {
-        return errorResponse(
+        return sendErrorResponse(
           res,
           "Not authorized to update this registration",
           403
@@ -271,7 +272,11 @@ router.put("/:rsvpId", auth, async (req, res) => {
 
     // Check if registration can be updated
     if (rsvp.status === "cancelled") {
-      return errorResponse(res, "Cannot update cancelled registration", 400);
+      return sendErrorResponse(
+        res,
+        "Cannot update cancelled registration",
+        400
+      );
     }
 
     const { contactInfo, additionalInfo, status } = req.body;
@@ -307,10 +312,10 @@ router.put("/:rsvpId", auth, async (req, res) => {
       { path: "event", select: "title startDate venue" },
     ]);
 
-    successResponse(res, "Registration updated successfully", rsvp);
+    sendSuccessResponse(res, "Registration updated successfully", rsvp);
   } catch (error) {
     console.error("Update registration error:", error);
-    errorResponse(res, "Failed to update registration", 500);
+    sendErrorResponse(res, "Failed to update registration", 500);
   }
 });
 
@@ -326,12 +331,12 @@ router.delete("/:rsvpId", auth, async (req, res) => {
 
     const rsvp = await RSVP.findById(rsvpId);
     if (!rsvp) {
-      return errorResponse(res, "Registration not found", 404);
+      return sendErrorResponse(res, "Registration not found", 404);
     }
 
     // Check if user owns this registration
     if (!rsvp.user.equals(userId) && req.user.role !== "admin") {
-      return errorResponse(
+      return sendErrorResponse(
         res,
         "Not authorized to cancel this registration",
         403
@@ -340,11 +345,11 @@ router.delete("/:rsvpId", auth, async (req, res) => {
 
     // Check if registration can be cancelled
     if (rsvp.status === "cancelled") {
-      return errorResponse(res, "Registration is already cancelled", 400);
+      return sendErrorResponse(res, "Registration is already cancelled", 400);
     }
 
     if (rsvp.status === "attended") {
-      return errorResponse(
+      return sendErrorResponse(
         res,
         "Cannot cancel registration after attendance",
         400
@@ -365,13 +370,13 @@ router.delete("/:rsvpId", auth, async (req, res) => {
       // TODO: Send notification to waitlisted user
     }
 
-    successResponse(res, "Registration cancelled successfully", {
+    sendSuccessResponse(res, "Registration cancelled successfully", {
       rsvp,
       waitlistPromoted: !!waitlistRSVP,
     });
   } catch (error) {
     console.error("Cancel registration error:", error);
-    errorResponse(res, "Failed to cancel registration", 500);
+    sendErrorResponse(res, "Failed to cancel registration", 500);
   }
 });
 
@@ -380,58 +385,53 @@ router.delete("/:rsvpId", auth, async (req, res) => {
  * @desc    Check in participant for event
  * @access  Private (Admin/Organizer)
  */
-router.post(
-  "/:rsvpId/check-in",
-  auth,
-  authorizeRoles(["admin", "organizer"]),
-  async (req, res) => {
-    try {
-      const { rsvpId } = req.params;
-      const { checkInCode } = req.body;
+router.post("/:rsvpId/check-in", auth, moderator, async (req, res) => {
+  try {
+    const { rsvpId } = req.params;
+    const { checkInCode } = req.body;
 
-      let rsvp;
+    let rsvp;
 
-      if (checkInCode) {
-        // Find by check-in code
-        rsvp = await RSVP.findOne({ checkInCode });
-      } else {
-        // Find by RSVP ID
-        rsvp = await RSVP.findById(rsvpId);
-      }
-
-      if (!rsvp) {
-        return errorResponse(res, "Registration not found", 404);
-      }
-
-      // Check if already checked in
-      if (rsvp.status === "attended") {
-        return errorResponse(res, "Participant already checked in", 400);
-      }
-
-      // Check if registration is confirmed
-      if (rsvp.status !== "confirmed") {
-        return errorResponse(
-          res,
-          "Registration must be confirmed before check-in",
-          400
-        );
-      }
-
-      // Mark as attended
-      await rsvp.markAttended();
-
-      await rsvp.populate([
-        { path: "user", select: "name email" },
-        { path: "event", select: "title startDate venue" },
-      ]);
-
-      successResponse(res, "Participant checked in successfully", rsvp);
-    } catch (error) {
-      console.error("Check-in error:", error);
-      errorResponse(res, "Failed to check in participant", 500);
+    if (checkInCode) {
+      // Find by check-in code
+      rsvp = await RSVP.findOne({ checkInCode });
+    } else {
+      // Find by RSVP ID
+      rsvp = await RSVP.findById(rsvpId);
     }
+
+    if (!rsvp) {
+      return sendErrorResponse(res, "Registration not found", 404);
+    }
+
+    // Check if already checked in
+    if (rsvp.status === "attended") {
+      return sendErrorResponse(res, "Participant already checked in", 400);
+    }
+
+    // Check if registration is confirmed
+    if (rsvp.status !== "confirmed") {
+      return sendErrorResponse(
+        res,
+        "Registration must be confirmed before check-in",
+        400
+      );
+    }
+
+    // Mark as attended
+    await rsvp.markAttended();
+
+    await rsvp.populate([
+      { path: "user", select: "name email" },
+      { path: "event", select: "title startDate venue" },
+    ]);
+
+    sendSuccessResponse(res, "Participant checked in successfully", rsvp);
+  } catch (error) {
+    console.error("Check-in error:", error);
+    sendErrorResponse(res, "Failed to check in participant", 500);
   }
-);
+});
 
 /**
  * @route   GET /api/rsvp/:rsvpId/qr-code
@@ -445,12 +445,12 @@ router.get("/:rsvpId/qr-code", auth, async (req, res) => {
 
     const rsvp = await RSVP.findById(rsvpId);
     if (!rsvp) {
-      return errorResponse(res, "Registration not found", 404);
+      return sendErrorResponse(res, "Registration not found", 404);
     }
 
     // Check if user owns this registration
     if (!rsvp.user.equals(userId)) {
-      return errorResponse(res, "Not authorized to view this QR code", 403);
+      return sendErrorResponse(res, "Not authorized to view this QR code", 403);
     }
 
     // Generate QR code data
@@ -461,13 +461,13 @@ router.get("/:rsvpId/qr-code", auth, async (req, res) => {
       user: rsvp.user,
     };
 
-    successResponse(res, "QR code data retrieved successfully", {
+    sendSuccessResponse(res, "QR code data retrieved successfully", {
       qrData,
       checkInCode: rsvp.checkInCode,
     });
   } catch (error) {
     console.error("QR code error:", error);
-    errorResponse(res, "Failed to generate QR code", 500);
+    sendErrorResponse(res, "Failed to generate QR code", 500);
   }
 });
 
@@ -476,72 +476,67 @@ router.get("/:rsvpId/qr-code", auth, async (req, res) => {
  * @desc    Get registration statistics for an event
  * @access  Private (Admin/Organizer)
  */
-router.get(
-  "/stats/:eventId",
-  auth,
-  authorizeRoles(["admin", "organizer"]),
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
+router.get("/stats/:eventId", auth, moderator, async (req, res) => {
+  try {
+    const { eventId } = req.params;
 
-      // Check if event exists and user has permission
-      const event = await Event.findById(eventId);
-      if (!event) {
-        return errorResponse(res, "Event not found", 404);
-      }
-
-      if (
-        req.user.role !== "admin" &&
-        !event.organizers.includes(req.user.id) &&
-        !event.coordinators.includes(req.user.id)
-      ) {
-        return errorResponse(
-          res,
-          "Not authorized to view statistics for this event",
-          403
-        );
-      }
-
-      const stats = await RSVP.getRegistrationStats(eventId);
-      const availability = await RSVP.checkAvailability(eventId);
-
-      // Get daily registration trend (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const dailyTrend = await RSVP.aggregate([
-        {
-          $match: {
-            event: mongoose.Types.ObjectId(eventId),
-            registeredAt: { $gte: thirtyDaysAgo },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: "%Y-%m-%d", date: "$registeredAt" },
-            },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
-
-      successResponse(res, "Event statistics retrieved successfully", {
-        stats,
-        availability,
-        dailyTrend,
-        event: {
-          title: event.title,
-          maxParticipants: event.maxParticipants,
-          registrationFee: event.registrationFee,
-        },
-      });
-    } catch (error) {
-      console.error("Get stats error:", error);
-      errorResponse(res, "Failed to retrieve event statistics", 500);
+    // Check if event exists and user has permission
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return sendErrorResponse(res, "Event not found", 404);
     }
+
+    if (
+      req.user.role !== "admin" &&
+      !event.organizers.includes(req.user.id) &&
+      !event.coordinators.includes(req.user.id)
+    ) {
+      return sendErrorResponse(
+        res,
+        "Not authorized to view statistics for this event",
+        403
+      );
+    }
+
+    const stats = await RSVP.getRegistrationStats(eventId);
+    const availability = await RSVP.checkAvailability(eventId);
+
+    // Get daily registration trend (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const dailyTrend = await RSVP.aggregate([
+      {
+        $match: {
+          event: new mongoose.Types.ObjectId(eventId),
+          registeredAt: { $gte: thirtyDaysAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$registeredAt" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    sendSuccessResponse(res, "Event statistics retrieved successfully", {
+      stats,
+      availability,
+      dailyTrend,
+      event: {
+        title: event.title,
+        maxParticipants: event.maxParticipants,
+        registrationFee: event.registrationFee,
+      },
+    });
+  } catch (error) {
+    console.error("Get stats error:", error);
+    sendErrorResponse(res, "Failed to retrieve event statistics", 500);
   }
-);
+});
 
 module.exports = router;

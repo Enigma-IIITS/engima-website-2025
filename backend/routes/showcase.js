@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const Showcase = require("../models/Showcase");
-const { auth, authorizeRoles } = require("../middleware/auth");
+const { auth, admin, moderator } = require("../middleware/auth");
 const {
   validateShowcase,
   validateShowcaseUpdate,
 } = require("../utils/validation");
-const { successResponse, errorResponse } = require("../utils/response");
+const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const multer = require("multer");
 const path = require("path");
 
@@ -64,7 +64,7 @@ router.post(
       // Validate input
       const errors = validateShowcase(req.body);
       if (errors.length > 0) {
-        return errorResponse(res, "Validation failed", 400, errors);
+        return sendErrorResponse(res, "Validation failed", 400, errors);
       }
 
       const userId = req.user.id;
@@ -183,10 +183,15 @@ router.post(
 
       await showcase.populate("owner", "name email profilePicture");
 
-      successResponse(res, "Showcase item created successfully", showcase, 201);
+      sendSuccessResponse(
+        res,
+        "Showcase item created successfully",
+        showcase,
+        201
+      );
     } catch (error) {
       console.error("Create showcase error:", error);
-      errorResponse(res, "Failed to create showcase item", 500);
+      sendErrorResponse(res, "Failed to create showcase item", 500);
     }
   }
 );
@@ -250,7 +255,7 @@ router.get("/", async (req, res) => {
 
     const total = await Showcase.countDocuments(query);
 
-    successResponse(res, "Showcase items retrieved successfully", {
+    sendSuccessResponse(res, "Showcase items retrieved successfully", {
       showcase,
       pagination: {
         currentPage: parseInt(page),
@@ -262,7 +267,7 @@ router.get("/", async (req, res) => {
     });
   } catch (error) {
     console.error("Get showcase error:", error);
-    errorResponse(res, "Failed to retrieve showcase items", 500);
+    sendErrorResponse(res, "Failed to retrieve showcase items", 500);
   }
 });
 
@@ -277,14 +282,14 @@ router.get("/featured", async (req, res) => {
 
     const featured = await Showcase.getFeatured(parseInt(limit));
 
-    successResponse(
+    sendSuccessResponse(
       res,
       "Featured showcase items retrieved successfully",
       featured
     );
   } catch (error) {
     console.error("Get featured showcase error:", error);
-    errorResponse(res, "Failed to retrieve featured showcase items", 500);
+    sendErrorResponse(res, "Failed to retrieve featured showcase items", 500);
   }
 });
 
@@ -302,14 +307,14 @@ router.get("/trending", async (req, res) => {
       parseInt(limit)
     );
 
-    successResponse(
+    sendSuccessResponse(
       res,
       "Trending showcase items retrieved successfully",
       trending
     );
   } catch (error) {
     console.error("Get trending showcase error:", error);
-    errorResponse(res, "Failed to retrieve trending showcase items", 500);
+    sendErrorResponse(res, "Failed to retrieve trending showcase items", 500);
   }
 });
 
@@ -325,14 +330,14 @@ router.get("/category/:category", async (req, res) => {
 
     const showcase = await Showcase.getByCategory(category, parseInt(limit));
 
-    successResponse(
+    sendSuccessResponse(
       res,
       `Showcase items in ${category} retrieved successfully`,
       showcase
     );
   } catch (error) {
     console.error("Get showcase by category error:", error);
-    errorResponse(res, "Failed to retrieve showcase items", 500);
+    sendErrorResponse(res, "Failed to retrieve showcase items", 500);
   }
 });
 
@@ -356,7 +361,7 @@ router.get("/my-showcase", auth, async (req, res) => {
 
     const total = await Showcase.countDocuments(query);
 
-    successResponse(res, "Your showcase items retrieved successfully", {
+    sendSuccessResponse(res, "Your showcase items retrieved successfully", {
       showcase,
       pagination: {
         currentPage: parseInt(page),
@@ -368,7 +373,7 @@ router.get("/my-showcase", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("Get user showcase error:", error);
-    errorResponse(res, "Failed to retrieve your showcase items", 500);
+    sendErrorResponse(res, "Failed to retrieve your showcase items", 500);
   }
 });
 
@@ -388,7 +393,7 @@ router.get("/:showcaseId", async (req, res) => {
       .populate("interactions.comments.replies.user", "name profilePicture");
 
     if (!showcase) {
-      return errorResponse(res, "Showcase item not found", 404);
+      return sendErrorResponse(res, "Showcase item not found", 404);
     }
 
     // Check if user can view this showcase
@@ -401,7 +406,7 @@ router.get("/:showcaseId", async (req, res) => {
         !req.user ||
         (!showcase.owner.equals(req.user.id) && req.user.role !== "admin")
       ) {
-        return errorResponse(
+        return sendErrorResponse(
           res,
           "Not authorized to view this showcase item",
           403
@@ -414,10 +419,10 @@ router.get("/:showcaseId", async (req, res) => {
       await showcase.incrementViews();
     }
 
-    successResponse(res, "Showcase item retrieved successfully", showcase);
+    sendSuccessResponse(res, "Showcase item retrieved successfully", showcase);
   } catch (error) {
     console.error("Get showcase item error:", error);
-    errorResponse(res, "Failed to retrieve showcase item", 500);
+    sendErrorResponse(res, "Failed to retrieve showcase item", 500);
   }
 });
 
@@ -442,12 +447,12 @@ router.put(
 
       const showcase = await Showcase.findById(showcaseId);
       if (!showcase) {
-        return errorResponse(res, "Showcase item not found", 404);
+        return sendErrorResponse(res, "Showcase item not found", 404);
       }
 
       // Check if user owns this showcase or is admin
       if (!showcase.owner.equals(userId) && req.user.role !== "admin") {
-        return errorResponse(
+        return sendErrorResponse(
           res,
           "Not authorized to update this showcase item",
           403
@@ -457,7 +462,7 @@ router.put(
       // Validate update data
       const errors = validateShowcaseUpdate(req.body);
       if (errors.length > 0) {
-        return errorResponse(res, "Validation failed", 400, errors);
+        return sendErrorResponse(res, "Validation failed", 400, errors);
       }
 
       // Update allowed fields
@@ -576,10 +581,10 @@ router.put(
 
       await showcase.populate("owner", "name email profilePicture");
 
-      successResponse(res, "Showcase item updated successfully", showcase);
+      sendSuccessResponse(res, "Showcase item updated successfully", showcase);
     } catch (error) {
       console.error("Update showcase error:", error);
-      errorResponse(res, "Failed to update showcase item", 500);
+      sendErrorResponse(res, "Failed to update showcase item", 500);
     }
   }
 );
@@ -596,12 +601,12 @@ router.delete("/:showcaseId", auth, async (req, res) => {
 
     const showcase = await Showcase.findById(showcaseId);
     if (!showcase) {
-      return errorResponse(res, "Showcase item not found", 404);
+      return sendErrorResponse(res, "Showcase item not found", 404);
     }
 
     // Check if user owns this showcase or is admin
     if (!showcase.owner.equals(userId) && req.user.role !== "admin") {
-      return errorResponse(
+      return sendErrorResponse(
         res,
         "Not authorized to delete this showcase item",
         403
@@ -610,10 +615,10 @@ router.delete("/:showcaseId", auth, async (req, res) => {
 
     await Showcase.findByIdAndDelete(showcaseId);
 
-    successResponse(res, "Showcase item deleted successfully");
+    sendSuccessResponse(res, "Showcase item deleted successfully");
   } catch (error) {
     console.error("Delete showcase error:", error);
-    errorResponse(res, "Failed to delete showcase item", 500);
+    sendErrorResponse(res, "Failed to delete showcase item", 500);
   }
 });
 
@@ -629,7 +634,7 @@ router.post("/:showcaseId/like", auth, async (req, res) => {
 
     const showcase = await Showcase.findById(showcaseId);
     if (!showcase) {
-      return errorResponse(res, "Showcase item not found", 404);
+      return sendErrorResponse(res, "Showcase item not found", 404);
     }
 
     const isLiked = showcase.interactions.likedBy.includes(userId);
@@ -640,7 +645,7 @@ router.post("/:showcaseId/like", auth, async (req, res) => {
       await showcase.like(userId);
     }
 
-    successResponse(
+    sendSuccessResponse(
       res,
       `Showcase item ${isLiked ? "unliked" : "liked"} successfully`,
       {
@@ -650,7 +655,7 @@ router.post("/:showcaseId/like", auth, async (req, res) => {
     );
   } catch (error) {
     console.error("Like showcase error:", error);
-    errorResponse(res, "Failed to update like status", 500);
+    sendErrorResponse(res, "Failed to update like status", 500);
   }
 });
 
@@ -666,12 +671,12 @@ router.post("/:showcaseId/comment", auth, async (req, res) => {
     const userId = req.user.id;
 
     if (!content || content.trim().length === 0) {
-      return errorResponse(res, "Comment content is required", 400);
+      return sendErrorResponse(res, "Comment content is required", 400);
     }
 
     const showcase = await Showcase.findById(showcaseId);
     if (!showcase) {
-      return errorResponse(res, "Showcase item not found", 404);
+      return sendErrorResponse(res, "Showcase item not found", 404);
     }
 
     await showcase.addComment(userId, content.trim());
@@ -684,10 +689,10 @@ router.post("/:showcaseId/comment", auth, async (req, res) => {
     const newComment =
       showcase.interactions.comments[showcase.interactions.comments.length - 1];
 
-    successResponse(res, "Comment added successfully", newComment);
+    sendSuccessResponse(res, "Comment added successfully", newComment);
   } catch (error) {
     console.error("Add comment error:", error);
-    errorResponse(res, "Failed to add comment", 500);
+    sendErrorResponse(res, "Failed to add comment", 500);
   }
 });
 
@@ -696,148 +701,133 @@ router.post("/:showcaseId/comment", auth, async (req, res) => {
  * @desc    Approve showcase item (Admin only)
  * @access  Private (Admin)
  */
-router.post(
-  "/:showcaseId/approve",
-  auth,
-  authorizeRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { showcaseId } = req.params;
-      const { notes = "" } = req.body;
-      const userId = req.user.id;
+router.post("/:showcaseId/approve", auth, admin, async (req, res) => {
+  try {
+    const { showcaseId } = req.params;
+    const { notes = "" } = req.body;
+    const userId = req.user.id;
 
-      const showcase = await Showcase.findById(showcaseId);
-      if (!showcase) {
-        return errorResponse(res, "Showcase item not found", 404);
-      }
-
-      await showcase.approve(userId, notes);
-
-      await showcase.populate("owner", "name email");
-
-      successResponse(res, "Showcase item approved successfully", showcase);
-    } catch (error) {
-      console.error("Approve showcase error:", error);
-      errorResponse(res, "Failed to approve showcase item", 500);
+    const showcase = await Showcase.findById(showcaseId);
+    if (!showcase) {
+      return sendErrorResponse(res, "Showcase item not found", 404);
     }
+
+    await showcase.approve(userId, notes);
+
+    await showcase.populate("owner", "name email");
+
+    sendSuccessResponse(res, "Showcase item approved successfully", showcase);
+  } catch (error) {
+    console.error("Approve showcase error:", error);
+    sendErrorResponse(res, "Failed to approve showcase item", 500);
   }
-);
+});
 
 /**
  * @route   POST /api/showcase/:showcaseId/feature
  * @desc    Feature/unfeature showcase item (Admin only)
  * @access  Private (Admin)
  */
-router.post(
-  "/:showcaseId/feature",
-  auth,
-  authorizeRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { showcaseId } = req.params;
+router.post("/:showcaseId/feature", auth, admin, async (req, res) => {
+  try {
+    const { showcaseId } = req.params;
 
-      const showcase = await Showcase.findById(showcaseId);
-      if (!showcase) {
-        return errorResponse(res, "Showcase item not found", 404);
-      }
-
-      if (showcase.featured) {
-        showcase.featured = false;
-        showcase.featuredAt = null;
-      } else {
-        await showcase.feature();
-      }
-
-      await showcase.save();
-
-      successResponse(
-        res,
-        `Showcase item ${
-          showcase.featured ? "featured" : "unfeatured"
-        } successfully`,
-        {
-          featured: showcase.featured,
-          featuredAt: showcase.featuredAt,
-        }
-      );
-    } catch (error) {
-      console.error("Feature showcase error:", error);
-      errorResponse(res, "Failed to update feature status", 500);
+    const showcase = await Showcase.findById(showcaseId);
+    if (!showcase) {
+      return sendErrorResponse(res, "Showcase item not found", 404);
     }
+
+    if (showcase.featured) {
+      showcase.featured = false;
+      showcase.featuredAt = null;
+    } else {
+      await showcase.feature();
+    }
+
+    await showcase.save();
+
+    sendSuccessResponse(
+      res,
+      `Showcase item ${
+        showcase.featured ? "featured" : "unfeatured"
+      } successfully`,
+      {
+        featured: showcase.featured,
+        featuredAt: showcase.featuredAt,
+      }
+    );
+  } catch (error) {
+    console.error("Feature showcase error:", error);
+    sendErrorResponse(res, "Failed to update feature status", 500);
   }
-);
+});
 
 /**
  * @route   GET /api/showcase/stats/analytics
  * @desc    Get showcase analytics (Admin only)
  * @access  Private (Admin)
  */
-router.get(
-  "/stats/analytics",
-  auth,
-  authorizeRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const stats = await Showcase.getStats();
+router.get("/stats/analytics", auth, admin, async (req, res) => {
+  try {
+    const stats = await Showcase.getStats();
 
-      // Get total counts by status
-      const statusStats = await Showcase.aggregate([
-        {
-          $group: {
-            _id: "$moderation.status",
-            count: { $sum: 1 },
-          },
+    // Get total counts by status
+    const statusStats = await Showcase.aggregate([
+      {
+        $group: {
+          _id: "$moderation.status",
+          count: { $sum: 1 },
         },
-      ]);
+      },
+    ]);
 
-      // Get top contributors
-      const topContributors = await Showcase.aggregate([
-        {
-          $match: {
-            visibility: "public",
-            "moderation.status": "approved",
-          },
+    // Get top contributors
+    const topContributors = await Showcase.aggregate([
+      {
+        $match: {
+          visibility: "public",
+          "moderation.status": "approved",
         },
-        {
-          $group: {
-            _id: "$owner",
-            count: { $sum: 1 },
-            totalViews: { $sum: "$metrics.views" },
-            totalLikes: { $sum: "$metrics.likes" },
-          },
+      },
+      {
+        $group: {
+          _id: "$owner",
+          count: { $sum: 1 },
+          totalViews: { $sum: "$metrics.views" },
+          totalLikes: { $sum: "$metrics.likes" },
         },
-        { $sort: { count: -1 } },
-        { $limit: 10 },
-        {
-          $lookup: {
-            from: "users",
-            localField: "_id",
-            foreignField: "_id",
-            as: "user",
-          },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
         },
-        { $unwind: "$user" },
-        {
-          $project: {
-            name: "$user.name",
-            profilePicture: "$user.profilePicture",
-            count: 1,
-            totalViews: 1,
-            totalLikes: 1,
-          },
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          name: "$user.name",
+          profilePicture: "$user.profilePicture",
+          count: 1,
+          totalViews: 1,
+          totalLikes: 1,
         },
-      ]);
+      },
+    ]);
 
-      successResponse(res, "Showcase analytics retrieved successfully", {
-        categoryStats: stats,
-        statusStats,
-        topContributors,
-      });
-    } catch (error) {
-      console.error("Get analytics error:", error);
-      errorResponse(res, "Failed to retrieve analytics", 500);
-    }
+    sendSuccessResponse(res, "Showcase analytics retrieved successfully", {
+      categoryStats: stats,
+      statusStats,
+      topContributors,
+    });
+  } catch (error) {
+    console.error("Get analytics error:", error);
+    sendErrorResponse(res, "Failed to retrieve analytics", 500);
   }
-);
+});
 
 module.exports = router;

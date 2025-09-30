@@ -263,7 +263,7 @@ rsvpSchema.statics.getUserRegistrations = function (userId, status = null) {
 
 rsvpSchema.statics.getRegistrationStats = async function (eventId) {
   const stats = await this.aggregate([
-    { $match: { event: mongoose.Types.ObjectId(eventId) } },
+    { $match: { event: new mongoose.Types.ObjectId(eventId) } },
     {
       $group: {
         _id: "$status",
