@@ -1,153 +1,148 @@
-# Enigma Backend API
+# ENIGMA Club Website - Full Stack Application
 
-A RESTful API backend for the Enigma website built with Express.js and Node.js.
+![ENIGMA](https://www.enigma-iiits.in/assets/img/logo.png)
+
+This repository contains the full-stack code for the official ENIGMA club website. It's a modern, feature-rich platform built with Node.js/Express on the backend and Next.js/React on the frontend, designed to manage events, users, and club activities.
+
+**Motto:** _Where Code Meets Curiosity._
+
+---
 
 ## Features
 
-- **Express.js** - Fast, unopinionated web framework
-- **Security** - Helmet for security headers, CORS enabled
-- **Logging** - Morgan for HTTP request logging
-- **Environment Configuration** - dotenv for environment variables
-- **Rate Limiting** - Protection against abuse
-- **Authentication** - JWT-based authentication (to be implemented)
-- **Modular Routes** - Organized route structure
+This application includes a comprehensive set of features for both regular users and administrators.
 
-## Project Structure
+### User Features
+* **User Authentication:** Secure user registration and login system using JWT (JSON Web Tokens).
+* **Event Discovery:** View a list of upcoming club events with details and poster images.
+* **RSVP System:** Logged-in users can easily register for events.
+* **Feedback Submission:** A dedicated form for users to submit feedback to the club.
 
-```
-backend/
-├── middleware/          # Custom middleware
-│   ├── auth.js         # Authentication middleware
-│   └── rateLimiter.js  # Rate limiting middleware
-├── routes/             # API routes
-│   ├── auth.js         # Authentication routes
-│   ├── users.js        # User management routes
-│   └── events.js       # Events routes
-├── .env                # Environment variables
-├── .gitignore          # Git ignore file
-├── package.json        # Dependencies and scripts
-└── server.js           # Main application file
-```
+### Admin Features
+* **Admin Dashboard:** A secure, role-protected dashboard for managing the platform.
+* **Full Event CRUD:** Admins can Create, Read, Update, and Delete events.
+* **Event Poster Uploads:** An easy-to-use interface for uploading and changing event poster images.
+* **RSVP Viewer:** Admins can view a detailed list of all registered attendees for any event, including their status.
+* **User Management:** Admins can view a list of all users and promote regular users to the 'admin' role.
+
+---
+
+## Tech Stack
+
+The project is built using a modern MERN-like stack.
+
+### Backend
+* **Runtime:** Node.js
+* **Framework:** Express.js
+* **Database:** MongoDB with Mongoose ODM
+* **Authentication:** `jsonwebtoken` (JWT) for tokens, `bcryptjs` for password hashing.
+* **File Uploads:** `multer` for handling image uploads.
+* **Middleware:** `cors`, `helmet`, `morgan`, `express-rate-limit`.
+
+### Frontend
+* **Framework:** Next.js 14 (App Router)
+* **Language:** TypeScript
+* **UI Library:** React
+* **Styling:** Tailwind CSS
+* **Animation:** Framer Motion
+* **API Communication:** Axios
+* **State Management:** React Context API for authentication.
+* **Package Manager:** `pnpm` (recommended for performance and reliability).
+
+---
 
 ## Getting Started
 
+Follow these instructions to set up and run the project locally on your machine.
+
 ### Prerequisites
+* Node.js (v18 or later)
+* `pnpm` package manager (`npm install -g pnpm`)
+* A MongoDB database connection string (from MongoDB Atlas or a local instance).
 
-- Node.js (v14 or higher)
-- npm or yarn
+### Backend Setup
 
-### Installation
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
 
-1. Navigate to the backend directory:
+2.  **Create an environment file:**
+    Create a file named `.env` in the `backend` root and add the following variables.
 
-   ```bash
-   cd backend
-   ```
+    ```env
+    # backend/.env
 
-2. Install dependencies:
+    # Your MongoDB connection string
+    MONGO_URI=mongodb+srv://...
 
-   ```bash
-   npm install
-   ```
+    # A long, random string for signing JWT tokens
+    JWT_SECRET=THIS_IS_A_VERY_SECRET_KEY_FOR_ENIGMA_PROJECT_2025
 
-3. Copy and configure environment variables:
+    # How long tokens should last (e.g., 7d, 24h)
+    JWT_EXPIRES_IN=7d
+    ```
 
-   ```bash
-   cp .env.example .env
-   ```
+3.  **Install dependencies:**
+    ```bash
+    pnpm install
+    ```
 
-   Edit `.env` file with your configuration.
+4.  **Seed the database (Optional but Recommended):**
+    This script will clear the database and create a test admin, a regular user, and two sample events so you can test the application immediately.
+    ```bash
+    pnpm run seed
+    ```
+    * **Admin Login:** `admin@enigma.com` / `Admin@123`
+    * **User Login:** `john@example.com` / `Password@123`
 
-4. Start the development server:
+5.  **Start the server:**
+    ```bash
+    pnpm run dev
+    ```
+    The backend server will now be running on `http://localhost:3000`.
 
-   ```bash
-   npm run dev
-   ```
+### Frontend Setup
 
-   Or start in production mode:
+1.  **Navigate to the frontend directory:**
+    ```bash
+    cd frontend
+    ```
 
-   ```bash
-   npm start
-   ```
+2.  **Create an environment file:**
+    Create a file named `.env.local` in the `frontend` root and add the following variable.
 
-## Available Scripts
+    ```env
+    # frontend/.env.local
 
-- `npm start` - Start the production server
-- `npm run dev` - Start the development server with nodemon
-- `npm test` - Run tests (to be implemented)
+    # The base URL of your running backend server
+    NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+    ```
 
-## API Endpoints
+3.  **Install dependencies:**
+    ```bash
+    pnpm install
+    ```
 
-### Health Check
+4.  **Start the server:**
+    ```bash
+    pnpm run dev
+    ```
+    The frontend application will now be running on `http://localhost:3001` (or the next available port).
 
-- `GET /` - Welcome message and API status
-- `GET /api/health` - Health check endpoint
+---
 
-### Authentication (TODO)
+## API Endpoints Overview
 
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
+The backend exposes the following main REST API routes:
 
-### Users (TODO)
-
-- `GET /api/users` - Get all users (Admin only)
-- `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user profile
-- `DELETE /api/users/:id` - Delete user (Admin only)
-
-### Events (TODO)
-
-- `GET /api/events` - Get all events
-- `GET /api/events/:id` - Get event by ID
-- `POST /api/events` - Create new event (Admin only)
-- `PUT /api/events/:id` - Update event (Admin only)
-- `DELETE /api/events/:id` - Delete event (Admin only)
-
-## Environment Variables
-
-Create a `.env` file in the backend directory with the following variables:
-
-```env
-NODE_ENV=development
-PORT=3000
-JWT_SECRET=your_super_secret_jwt_key_here
-JWT_EXPIRES_IN=24h
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=enigma_db
-DB_USER=your_username
-DB_PASSWORD=your_password
-```
-
-## Security Features
-
-- **Helmet** - Sets various HTTP headers for security
-- **CORS** - Configured for cross-origin requests
-- **Rate Limiting** - Prevents abuse and DoS attacks
-- **JWT Authentication** - Secure token-based authentication (to be implemented)
-
-## TODO
-
-- [ ] Implement database integration (MongoDB/PostgreSQL)
-- [ ] Complete JWT authentication system
-- [ ] Add input validation and sanitization
-- [ ] Implement proper error handling
-- [ ] Add unit and integration tests
-- [ ] Add API documentation with Swagger
-- [ ] Implement file upload functionality
-- [ ] Add email service integration
-- [ ] Set up database migrations
-- [ ] Add comprehensive logging system
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the ISC License.
+* **`POST /api/auth/register`**: Create a new user account.
+* **`POST /api/auth/login`**: Log in a user and receive a JWT.
+* **`GET /api/events`**: Get a list of all events (can be filtered).
+* **`POST /api/events`**: (Admin) Create a new event.
+* **`PUT /api/events/:id`**: (Admin) Update an existing event.
+* **`DELETE /api/events/:id`**: (Admin) Delete an event.
+* **`GET /api/users`**: (Admin) Get a list of all users.
+* **`PUT /api/users/:id/role`**: (Admin) Promote a user to the admin role.
+* **`POST /api/rsvp`**: (User) Register for an event.
+* **`GET /api/rsvp/event/:eventId`**: (Admin) View all registrations for an event.
