@@ -212,7 +212,7 @@ export default function BackgroundRippleEffectDemo() {
         <div id="domains" className="pointer-events-auto">
           <ClubDomains />
         </div>
-        <div id="RSVP" className="pointer-events-auto">
+        <div id="rsvp" className="pointer-events-auto">
           <UpcomingEventsExpandableCard />
         </div>
         <div id="events" className="pointer-events-auto">
