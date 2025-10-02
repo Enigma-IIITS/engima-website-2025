@@ -18,10 +18,10 @@ const MOBILE_COLS = 24;
 const DESKTOP_ROWS = 20;
 const DESKTOP_COLS = 40;
 
-// This is the background grid component
+// Background ripple grid component
 const BackgroundRippleEffect: React.FC = () => {
   const [grid, setGrid] = useState<
-    Array<{ id: number; char: string; isRipple?: boolean }>
+    Array<{ id: number; char: string; rippleLevel?: number }>
   >([]);
   const gridRef = useRef(grid);
 
@@ -53,22 +53,23 @@ const BackgroundRippleEffect: React.FC = () => {
     const initialGrid = [];
     const totalCells = rows * cols;
     for (let i = 0; i < totalCells; i++) {
-      initialGrid.push({ id: i, char: generateRandomChar() });
+      initialGrid.push({ id: i, char: generateRandomChar(), rippleLevel: 0 });
     }
     setGrid(initialGrid);
     gridRef.current = initialGrid;
   }, [generateRandomChar, rows, cols]);
 
+  // background subtle animation
   useEffect(() => {
     const interval = setInterval(() => {
       setGrid((prev) =>
         prev.map((cell) => ({
           ...cell,
-          char: Math.random() > 0.9 ? generateRandomChar() : cell.char,
-          isRipple: false,
+          char: Math.random() > 0.92 ? generateRandomChar() : cell.char,
+          rippleLevel: cell.rippleLevel ? cell.rippleLevel : 0,
         }))
       );
-    }, 300);
+    }, 400);
 
     return () => clearInterval(interval);
   }, [generateRandomChar]);
@@ -77,63 +78,42 @@ const BackgroundRippleEffect: React.FC = () => {
     (id: number) => {
       const centerRow = Math.floor(id / cols);
       const centerCol = id % cols;
-
-      const maxDistance = Math.max(
-        centerRow,
-        rows - 1 - centerRow,
-        centerCol,
-        cols - 1 - centerCol
-      );
-
-      setGrid((prev) =>
-        prev.map((cell) => ({
-          ...cell,
-          isRipple: false,
-        }))
-      );
+      const maxDistance = Math.sqrt(rows * rows + cols * cols);
 
       for (let distance = 0; distance <= maxDistance; distance++) {
         setTimeout(() => {
-          setGrid((prev) => {
-            return prev.map((cell, idx) => {
+          setGrid((prev) =>
+            prev.map((cell, idx) => {
               const row = Math.floor(idx / cols);
               const col = idx % cols;
-              const dRow = Math.abs(row - centerRow);
-              const dCol = Math.abs(col - centerCol);
-              const manhattanDistance = dRow + dCol;
+              const dRow = row - centerRow;
+              const dCol = col - centerCol;
 
-              if (manhattanDistance === distance) {
+              const euclideanDistance = Math.sqrt(dRow * dRow + dCol * dCol);
+
+              // tolerance band
+              if (Math.abs(euclideanDistance - distance) < 0.6) {
                 return {
                   ...cell,
                   char: generateBinaryChar(),
-                  isRipple: true,
+                  rippleLevel: 1, // start ripple
                 };
               }
               return cell;
-            });
-          });
-
-          setTimeout(() => {
-            setGrid((prev) =>
-              prev.map((cell, idx) => {
-                const row = Math.floor(idx / cols);
-                const col = idx % cols;
-                const dRow = Math.abs(row - centerRow);
-                const dCol = Math.abs(col - centerCol);
-                const manhattanDistance = dRow + dCol;
-
-                if (manhattanDistance === distance) {
-                  return {
-                    ...cell,
-                    isRipple: false,
-                  };
-                }
-                return cell;
-              })
-            );
-          }, 300);
-        }, distance * 70);
+            })
+          );
+        }, distance * 45);
       }
+
+      // fade ripple back down smoothly
+      setTimeout(() => {
+        setGrid((prev) =>
+          prev.map((cell) => ({
+            ...cell,
+            rippleLevel: 0,
+          }))
+        );
+      }, maxDistance * 60 + 800);
     },
     [generateBinaryChar, rows, cols]
   );
@@ -151,11 +131,12 @@ const BackgroundRippleEffect: React.FC = () => {
         <div
           key={cell.id}
           onClick={() => handleCellClick(cell.id)}
-          className={`flex cursor-pointer items-center justify-center border border-neutral-900 bg-black font-mono transition-colors hover:bg-green-900/20 active:bg-green-800/40 ${
-            cell.isRipple
-              ? "text-green-300 animate-pulse font-bold drop-shadow-md"
-              : "text-green-400"
-          }`}
+          className={`flex cursor-pointer items-center justify-center border border-neutral-900 bg-black font-mono transition-all ease-out
+            ${
+              cell.rippleLevel === 1
+                ? "text-green-300 font-bold animate-ripple-glow"
+                : "text-green-400"
+            }`}
           style={{
             WebkitTapHighlightColor: "transparent",
             fontSize: `${rows === MOBILE_ROWS ? "0.75rem" : "0.8rem"}`,
@@ -170,7 +151,26 @@ const BackgroundRippleEffect: React.FC = () => {
   );
 };
 
-// This is the main page layout component
+// Add CSS animation in global.css (or Tailwind config)
+const rippleCSS = `
+@keyframes rippleGlow {
+  0% { text-shadow: 0 0 4px rgba(0,255,0,0.6), 0 0 8px rgba(0,255,0,0.3); transform: scale(1); }
+  50% { text-shadow: 0 0 10px rgba(0,255,0,1), 0 0 20px rgba(0,255,0,0.8); transform: scale(1.2); }
+  100% { text-shadow: 0 0 4px rgba(0,255,0,0.4); transform: scale(1); }
+}
+.animate-ripple-glow {
+  animation: rippleGlow 0.6s ease-out;
+}
+`;
+
+// Inject ripple CSS dynamically
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = rippleCSS;
+  document.head.appendChild(style);
+}
+
+// Main page layout
 export default function BackgroundRippleEffectDemo() {
   const words = [
     { text: "Where", className: "text-white" },
@@ -181,17 +181,15 @@ export default function BackgroundRippleEffectDemo() {
 
   return (
     <div className="relative w-full overflow-x-hidden bg-black">
-      {/* --- BACKGROUND LAYER (z-0) --- */}
+      {/* --- BACKGROUND LAYER --- */}
       <div className="fixed inset-0 z-0">
         <BackgroundRippleEffect />
       </div>
       <div className="fixed inset-0 z-10 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(0,0,0,0.6)_100%)]" />
       <div className="fixed inset-0 z-10 pointer-events-none bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.3)_70%,rgba(0,0,0,1)_100%)]" />
 
-      {/* --- SCROLLABLE CONTENT LAYER (z-20) --- */}
-      {/* This main wrapper is transparent to clicks by default */}
+      {/* --- SCROLLABLE CONTENT --- */}
       <div className="relative z-20 pointer-events-none">
-        {/* Hero Section */}
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
           <div className="pointer-events-auto">
             <TextGenerateEffect
@@ -208,13 +206,14 @@ export default function BackgroundRippleEffectDemo() {
           </div>
         </div>
 
-        {/* --- Content Sections --- */}
-        {/* Each section re-enables pointer events, becoming a "solid" block */}
         <div id="About" className="pointer-events-auto">
           <AboutUsEvervaultCard />
         </div>
         <div id="domains" className="pointer-events-auto">
           <ClubDomains />
+        </div>
+        <div id="RSVP" className="pointer-events-auto">
+          <UpcomingEventsExpandableCard />
         </div>
         <div id="events" className="pointer-events-auto">
           <PastEvents />
@@ -226,15 +225,10 @@ export default function BackgroundRippleEffectDemo() {
           <FocusCardsDemo1 />
         </div>
         <div id="feedback" className="pointer-events-auto">
-          <FeedbackForm/>
+          <FeedbackForm />
         </div>
-        <br/>
-        <br/>
-        <div id="RSVP" className="pointer-events-auto">
-          <UpcomingEventsExpandableCard/>
-        </div>
-
-        {/* The original "digital abyss" footer text */}
+        <br />
+        {/* Footer text */}
         <div className="mt-20 mb-32 w-full max-w-3xl text-neutral-500 space-y-6 opacity-90 text-center pointer-events-auto mx-auto">
           <p className="text-lg">
             Scroll down to descend into the digital abyss. The grid continues
