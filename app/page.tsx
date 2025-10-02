@@ -14,7 +14,7 @@ export default function SyntheticV0PageForDeployment() {
       >
         <div className="flex justify-center p-4">
           <div className="pointer-events-auto">
-            <FloatingNav navItems={[{name:"Home",link:"/"},{name:"About Us",link:"#About"},{name:"Domains",link:"#domains"},{name:"Past Events",link:"#events"},{name:"Team",link:"#Team"}]} />
+            <FloatingNav navItems={[{name:"Home",link:"/"},{name:"About Us",link:"#About"},{name:"Domains",link:"#domains"},{name:"Past Events",link:"#events"},{name:"Team",link:"#Team"},{name:"Upcoming Events",link:"#RSVP"}]} />
           </div>
         </div>
       </div>
