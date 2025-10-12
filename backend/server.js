@@ -13,23 +13,25 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// General Middleware
 app.use(helmet());
 app.use(cors());
 app.use(morgan("combined"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ FIX: Add a custom middleware to set the required header for images
+// Custom middleware to set Cross-Origin-Resource-Policy header
+// This helps prevent browsers from blocking image loads
 app.use((req, res, next) => {
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   next();
 });
 
-// This line serves the static files from the 'uploads' directory
+// Static file serving for the 'uploads' folder
+// This line MUST be here for your images to be accessible
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Rate limiting
+// Rate limiting middleware
 app.use(basicLimiter);
 app.use("/api/auth", authLimiter);
 
@@ -54,7 +56,6 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
   });
 });
 
@@ -67,7 +68,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler for any routes not matched
 app.use("*", (req, res) => {
   res.status(404).json({
     message: "Route not found",
@@ -76,7 +77,6 @@ app.use("*", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 });
 
 module.exports = app;
