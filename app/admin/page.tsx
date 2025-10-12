@@ -61,26 +61,6 @@ export default function AdminPage() {
             isActive={activeTab === "feedback"}
             onClick={() => setActiveTab("feedback")}
           />
-          {/* ✅ ADD THIS TAB */}
-          <Link href="/admin/scan">
-            <div className="flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors text-blue-400 hover:text-blue-300 border-b-2 border-transparent">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-                <path d="M3 9a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2-2H5a2 2 0 01-2-2V9z" />
-              </svg>
-              QR Scanner
-            </div>
-          </Link>
           <TabButton
             title="Manage Profile"
             icon={<ProfileIcon />}
@@ -101,13 +81,7 @@ export default function AdminPage() {
               {activeTab === "events" && <EventManagement />}
               {activeTab === "users" && <UserManagement />}
               {activeTab === "feedback" && <FeedbackManagement />}
-              {activeTab === "profile" && (
-                <div className="text-center p-10 bg-neutral-900 rounded-lg border border-neutral-800">
-                  <p className="text-neutral-400">
-                    Profile management coming soon.
-                  </p>
-                </div>
-              )}
+              {activeTab === "profile" && <ProfileManagement />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -298,7 +272,6 @@ const EventManagement = () => {
     </div>
   );
 };
-
 // --- User Management Component ---
 const UserManagement = () => {
   const { user: adminUser, token } = useAuth();
@@ -453,6 +426,239 @@ const FeedbackManagement = () => {
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// --- Profile Management Component ---
+const ProfileManagement = () => {
+  const { token } = useAuth();
+  const API_ROOT = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "");
+
+  const [profile, setProfile] = useState<any>({
+    displayName: "",
+    tagline: "",
+    bio: "",
+    contact: { linkedIn: "", github: "", portfolio: "" },
+    social: { twitter: "" },
+  });
+  const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (token) {
+      const fetchProfile = async () => {
+        setIsLoading(true);
+        try {
+          const res = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/members/my-profile`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          if (res.data.success && res.data.data) {
+            const fetchedData = res.data.data;
+            const fullProfile = {
+              ...{ displayName: "", tagline: "", bio: "" },
+              ...fetchedData,
+              contact: {
+                linkedIn: "",
+                github: "",
+                portfolio: "",
+                ...fetchedData.contact,
+              },
+              social: { twitter: "", ...fetchedData.social },
+            };
+            setProfile(fullProfile);
+            if (fetchedData.media?.profilePicture?.url) {
+              setPreviewUrl(
+                `${API_ROOT}${fetchedData.media.profilePicture.url}`
+              );
+            }
+          }
+        } catch (error: any) {
+          if (error.response?.status !== 404) {
+            console.error("Failed to fetch profile", error);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchProfile();
+    }
+  }, [token, API_ROOT]);
+
+  const handleTextChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
+      setProfile((prev) => ({
+        ...prev,
+        [parent]: { ...prev[parent], [child]: value },
+      }));
+    } else {
+      setProfile((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleFileChange = (file: File | null) => {
+    if (file) {
+      setProfilePicFile(file);
+      if (previewUrl && previewUrl.startsWith("blob:"))
+        URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const submissionData = new FormData();
+
+    submissionData.append("contact", JSON.stringify(profile.contact));
+    submissionData.append("social", JSON.stringify(profile.social));
+    submissionData.append("displayName", profile.displayName);
+    submissionData.append("tagline", profile.tagline);
+    submissionData.append("bio", profile.bio);
+
+    if (profilePicFile) {
+      submissionData.append("profilePicture", profilePicFile);
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/members`,
+        submissionData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      alert("Profile updated successfully!");
+      if (response.data.data.media?.profilePicture?.url) {
+        setPreviewUrl(
+          `${API_ROOT}${response.data.data.media.profilePicture.url}`
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      alert("Failed to update profile.");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-10">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+        <ProfileIcon /> Your Member Profile
+      </h2>
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 bg-neutral-900 border border-neutral-800 rounded-lg p-6"
+      >
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          <div>
+            <label
+              htmlFor="profile-pic-upload"
+              className="cursor-pointer group"
+            >
+              <div className="w-32 h-32 rounded-full bg-neutral-800 border-2 border-dashed border-neutral-600 group-hover:border-green-500 transition-colors flex items-center justify-center overflow-hidden">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-neutral-500 text-xs text-center p-2">
+                    Upload Photo
+                  </span>
+                )}
+              </div>
+            </label>
+            <input
+              id="profile-pic-upload"
+              type="file"
+              className="sr-only"
+              onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+              accept="image/*"
+            />
+          </div>
+          <div className="flex-grow w-full space-y-4">
+            <FormInput
+              label="Display Name"
+              name="displayName"
+              value={profile.displayName}
+              onChange={handleTextChange}
+              placeholder="Your public name"
+            />
+            <FormInput
+              label="Tagline"
+              name="tagline"
+              value={profile.tagline}
+              onChange={handleTextChange}
+              placeholder="e.g., Full Stack Developer | Cybersecurity Enthusiast"
+            />
+          </div>
+        </div>
+        <FormTextArea
+          label="Bio"
+          name="bio"
+          value={profile.bio}
+          onChange={handleTextChange}
+          rows={5}
+          placeholder="A short bio about your interests and skills."
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormInput
+            label="GitHub URL"
+            name="contact.github"
+            value={profile.contact.github}
+            onChange={handleTextChange}
+            placeholder="https://github.com/..."
+          />
+          <FormInput
+            label="LinkedIn URL"
+            name="contact.linkedIn"
+            value={profile.contact.linkedIn}
+            onChange={handleTextChange}
+            placeholder="https://linkedin.com/in/..."
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormInput
+            label="Portfolio/Website"
+            name="contact.portfolio"
+            value={profile.contact.portfolio}
+            onChange={handleTextChange}
+            placeholder="https://your.website"
+          />
+          <FormInput
+            label="Twitter URL"
+            name="social.twitter"
+            value={profile.social.twitter}
+            onChange={handleTextChange}
+            placeholder="https://twitter.com/..."
+          />
+        </div>
+
+        <div className="flex justify-end pt-4 border-t border-neutral-800 mt-6">
+          <button
+            type="submit"
+            className="px-6 py-2 bg-green-600 text-black font-bold rounded-lg hover:bg-green-500 transition-colors"
+          >
+            Save Profile
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
@@ -704,7 +910,7 @@ const EventModal = ({
 
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-1">
-              Event Poster
+              Event Poster (File limit: 10 MB)
             </label>
             <label
               htmlFor="poster-upload"
