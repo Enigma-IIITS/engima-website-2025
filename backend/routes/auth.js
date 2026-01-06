@@ -17,8 +17,6 @@ const {
 const router = express.Router();
 
 // @route   POST /api/auth/register
-// @desc    Register a new user
-// @access  Public
 router.post(
   "/register",
   validateUserRegistration,
@@ -28,7 +26,6 @@ router.post(
       const { name, email, password, phone, college, year, department } =
         req.body;
 
-      // Check if user already exists
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
         return sendErrorResponse(
@@ -38,7 +35,7 @@ router.post(
         );
       }
 
-      // Create new user
+      // Model pre-save hook handles hashing automatically
       const user = new User({
         name,
         email,
@@ -50,8 +47,6 @@ router.post(
       });
 
       await user.save();
-
-      // Generate JWT token
       const token = generateToken(user);
 
       sendCreatedResponse(res, "User registered successfully", {
@@ -66,8 +61,6 @@ router.post(
 );
 
 // @route   POST /api/auth/login
-// @desc    Authenticate user and get token
-// @access  Public
 router.post(
   "/login",
   validateUserLogin,
@@ -76,27 +69,28 @@ router.post(
     try {
       const { email, password } = req.body;
 
-      // Find user by email and include password
-      const user = await User.findByEmail(email).select("+password");
+      // 🚀 THE FIX: Explicitly select the password field using .select("+password")
+      // because the schema has 'select: false' for security.
+      const user = await User.findOne({ email: email.toLowerCase() }).select(
+        "+password"
+      );
+
       if (!user) {
         return sendUnauthorizedResponse(res, "Invalid credentials");
       }
 
-      // Check if user is active
       if (!user.isActive) {
         return sendUnauthorizedResponse(res, "Account is deactivated");
       }
 
-      // Verify password
+      // Verify password using the bcrypt comparison method in User model
       const isValidPassword = await user.comparePassword(password);
       if (!isValidPassword) {
+        console.log(`Password mismatch for user: ${email}`);
         return sendUnauthorizedResponse(res, "Invalid credentials");
       }
 
-      // Update last login
       await user.updateLastLogin();
-
-      // Generate JWT token
       const token = generateToken(user);
 
       sendSuccessResponse(res, "Login successful", {
@@ -111,12 +105,8 @@ router.post(
 );
 
 // @route   POST /api/auth/logout
-// @desc    Logout user
-// @access  Private
 router.post("/logout", auth, async (req, res) => {
   try {
-    // In a real-world app, you might want to blacklist the token
-    // or store logout info in the database
     sendSuccessResponse(res, "User logged out successfully");
   } catch (error) {
     console.error("Logout error:", error);
@@ -125,8 +115,6 @@ router.post("/logout", auth, async (req, res) => {
 });
 
 // @route   GET /api/auth/me
-// @desc    Get current user profile
-// @access  Private
 router.get("/me", auth, async (req, res) => {
   try {
     sendSuccessResponse(res, "User profile retrieved", req.user.toJSON());

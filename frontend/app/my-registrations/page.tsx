@@ -6,8 +6,8 @@ import Link from "next/link";
 import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
 import QRCode from "react-qr-code";
+import FeedbackForm from "@/components/feedback";
 
-// --- Main Page Component ---
 export default function MyRegistrationsPage() {
   const { user, token, loading } = useAuth();
   const router = useRouter();
@@ -16,40 +16,40 @@ export default function MyRegistrationsPage() {
   const [memberProfile, setMemberProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRsvp, setSelectedRsvp] = useState<any | null>(null);
+  const [feedbackTarget, setFeedbackTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    if (!loading && !user) router.push("/login");
 
     if (token) {
       const fetchDashboardData = async () => {
         setIsLoading(true);
         try {
-          // 1. Fetch Registrations
           const regRes = await axios.get(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/rsvp/my-registrations`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
           );
-          if (regRes.data.success) {
+          if (regRes.data.success)
             setRegistrations(regRes.data.data.registrations);
-          }
 
-          // 2. Fetch Member Profile (contains stickers)
           const profileRes = await axios.get(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/members/my-profile`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
           );
-          if (profileRes.data.success) {
-            setMemberProfile(profileRes.data.data);
-          }
+          if (profileRes.data.success) setMemberProfile(profileRes.data.data);
         } catch (error) {
           console.error("Failed to fetch dashboard data", error);
         } finally {
           setIsLoading(false);
         }
       };
-
       fetchDashboardData();
     }
   }, [user, token, loading, router]);
@@ -59,7 +59,9 @@ export default function MyRegistrationsPage() {
       <div className="min-h-screen bg-black flex items-center justify-center text-white font-mono">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-          <p className="animate-pulse text-xl">Loading Dashboard...</p>
+          <p className="animate-pulse text-xl uppercase tracking-tighter">
+            Initializing...
+          </p>
         </div>
       </div>
     );
@@ -68,9 +70,6 @@ export default function MyRegistrationsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
-        {" "}
-        {/* Increased max-width for bigger gallery */}
-        {/* Navigation */}
         <Link
           href="/"
           className="inline-flex items-center text-neutral-400 hover:text-white mb-8 transition-colors group"
@@ -80,7 +79,7 @@ export default function MyRegistrationsPage() {
             Back to Home
           </span>
         </Link>
-        {/* Header Section */}
+
         <header className="mb-16">
           <h1 className="text-5xl font-extrabold mb-4 tracking-tight">
             User Dashboard
@@ -93,68 +92,77 @@ export default function MyRegistrationsPage() {
             .
           </p>
         </header>
-        {/* Achievements Section - NOW BIGGER */}
+
+        {/* Large Stickers Section */}
         <section className="mb-20">
           <StickerGallery stickers={memberProfile?.stickers} />
         </section>
+
         {/* Tickets Section */}
         <section className="max-w-4xl">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-            <TicketIcon /> Upcoming Access Passes
+            <TicketIcon /> My Access Passes
           </h2>
           <div className="space-y-6">
-            {registrations.length > 0 ? (
-              registrations.map((rsvp) => (
-                <div
-                  key={rsvp._id}
-                  className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 hover:bg-neutral-900 transition-all hover:border-neutral-600"
-                >
-                  <div>
-                    <h3 className="font-bold text-white text-2xl mb-2">
-                      {rsvp.event.title}
-                    </h3>
-                    <div className="flex flex-wrap gap-4 mt-1">
-                      <p className="px-3 py-1 bg-neutral-800 rounded-full text-sm text-neutral-300 flex items-center gap-2">
-                        <CalendarSmallIcon />{" "}
-                        {new Date(rsvp.event.startDate).toLocaleDateString(
-                          undefined,
-                          { month: "long", day: "numeric", year: "numeric" }
-                        )}
-                      </p>
-                      <p
-                        className={`px-3 py-1 rounded-full text-sm font-bold capitalize border ${
-                          rsvp.status === "confirmed"
-                            ? "bg-green-500/10 text-green-400 border-green-500/20"
-                            : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                        }`}
-                      >
-                        {rsvp.status}
-                      </p>
-                    </div>
+            {registrations.map((rsvp) => (
+              <div
+                key={rsvp._id}
+                className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 hover:border-neutral-600 transition-all"
+              >
+                <div className="flex-grow">
+                  <h3 className="font-bold text-white text-2xl mb-2">
+                    {rsvp.event.title}
+                  </h3>
+                  <div className="flex flex-wrap gap-4">
+                    <p className="px-3 py-1 bg-neutral-800 rounded-full text-xs text-neutral-300 flex items-center gap-2">
+                      <CalendarSmallIcon />{" "}
+                      {new Date(rsvp.event.startDate).toLocaleDateString(
+                        undefined,
+                        { month: "long", day: "numeric", year: "numeric" }
+                      )}
+                    </p>
+                    <p
+                      className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                        rsvp.status === "confirmed"
+                          ? "bg-green-500/10 text-green-400 border-green-500/20"
+                          : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                      }`}
+                    >
+                      {rsvp.status}
+                    </p>
                   </div>
-
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  {/* Feedback trigger based on date */}
+                  {new Date(rsvp.event.startDate) <= new Date() && (
+                    <button
+                      onClick={() =>
+                        setFeedbackTarget({
+                          id: rsvp.event._id,
+                          title: rsvp.event.title,
+                        })
+                      }
+                      className="px-6 py-3 bg-neutral-800 text-green-400 font-bold rounded-xl border border-green-500/20 hover:bg-green-500/10"
+                    >
+                      Share Feedback
+                    </button>
+                  )}
                   {rsvp.status === "confirmed" && rsvp.checkInCode && (
                     <button
                       onClick={() => setSelectedRsvp(rsvp)}
-                      className="w-full sm:w-auto px-8 py-3 bg-green-600 text-black font-black uppercase tracking-tighter rounded-xl hover:bg-green-500 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-900/20"
+                      className="px-8 py-3 bg-green-600 text-black font-black uppercase rounded-xl hover:bg-green-500 transition-all hover:scale-105 active:scale-95"
                     >
-                      Show QR Entry
+                      Show QR Pass
                     </button>
                   )}
                 </div>
-              ))
-            ) : (
-              <div className="bg-neutral-900/30 border-2 border-dashed border-neutral-800 rounded-3xl p-16 text-center">
-                <p className="text-neutral-500 text-lg italic">
-                  No active event tickets found.
-                </p>
               </div>
-            )}
+            ))}
           </div>
         </section>
       </div>
 
-      {/* QR Code Modal */}
+      {/* QR Modal */}
       <AnimatePresence>
         {selectedRsvp && (
           <motion.div
@@ -168,15 +176,9 @@ export default function MyRegistrationsPage() {
               initial={{ scale: 0.8, y: 50 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.8, y: 50 }}
-              className="bg-white p-8 sm:p-12 rounded-[2.5rem] text-center max-w-md w-full relative border-[12px] border-neutral-200 shadow-2xl"
+              className="bg-white p-8 sm:p-12 rounded-[2.5rem] text-center max-w-md w-full relative border-[12px] border-neutral-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => setSelectedRsvp(null)}
-                className="absolute -top-12 right-0 text-white text-3xl font-light hover:text-green-400"
-              >
-                Close ✕
-              </button>
               <h2 className="text-3xl font-black text-black mb-1 uppercase tracking-tighter">
                 Event Pass
               </h2>
@@ -191,10 +193,40 @@ export default function MyRegistrationsPage() {
                   {selectedRsvp.checkInCode}
                 </p>
               </div>
-              <p className="text-xs text-neutral-400 mt-8 font-medium">
+              <p className="text-xs text-neutral-400 mt-8 font-medium italic">
                 PLEASE HAVE THIS READY AT THE VENUE GATE
               </p>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Feedback Modal */}
+      <AnimatePresence>
+        {feedbackTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            onClick={() => setFeedbackTarget(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md relative"
+            >
+              <button
+                onClick={() => setFeedbackTarget(null)}
+                className="absolute -top-12 right-0 text-white text-2xl hover:text-green-400"
+              >
+                ✕
+              </button>
+              <FeedbackForm
+                eventId={feedbackTarget.id}
+                eventTitle={feedbackTarget.title}
+                onSuccess={() => setFeedbackTarget(null)}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -202,62 +234,41 @@ export default function MyRegistrationsPage() {
   );
 }
 
-// --- Helper Components ---
-
 const StickerGallery = ({ stickers }: { stickers: any[] }) => {
   const API_ROOT = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "");
-
   if (!stickers || stickers.length === 0) return null;
-
   return (
     <div className="bg-neutral-900/20 border border-neutral-800 rounded-[2rem] p-8 sm:p-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-4">
-        <div>
-          <h3 className="text-3xl font-black mb-2 flex items-center gap-3">
-            <StickerIcon /> Hall of Fame
-          </h3>
-          <p className="text-neutral-500 font-medium">
-            Badges and stickers awarded for your contributions.
-          </p>
-        </div>
-        <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 font-bold text-sm">
-          {stickers.length} Achievements Earned
-        </div>
-      </div>
-
+      <h3 className="text-3xl font-black mb-12 flex items-center gap-3">
+        <StickerIcon /> Hall of Fame
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {stickers.map((s, idx) => (
           <motion.div
             key={idx}
-            whileHover={{ y: -10, scale: 1.02 }}
-            className="relative group bg-gradient-to-b from-neutral-800/50 to-neutral-900/80 border border-neutral-700/50 p-8 rounded-[1.5rem] flex flex-col items-center text-center transition-all hover:border-green-500/40 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
+            whileHover={{ y: -10 }}
+            className="bg-gradient-to-b from-neutral-800/50 to-neutral-900/80 border border-neutral-700/50 p-8 rounded-[1.5rem] flex flex-col items-center text-center hover:border-green-500/40"
           >
-            {/* The Image is now much larger */}
             <div className="relative mb-6">
-              <div className="absolute inset-0 bg-green-500/20 blur-[40px] rounded-full group-hover:bg-green-500/40 transition-all"></div>
+              <div className="absolute inset-0 bg-green-500/20 blur-[40px] rounded-full"></div>
               <img
                 src={`${API_ROOT}${s.stickerImage.url}`}
                 alt={s.stickerName}
                 className="relative w-32 h-32 sm:w-40 sm:h-40 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
               />
             </div>
-
             <h4 className="text-xl font-bold text-white mb-2 uppercase tracking-tight">
               {s.stickerName}
             </h4>
-
-            <p className="text-neutral-400 text-sm leading-relaxed mb-4 max-w-[200px]">
+            <p className="text-neutral-400 text-sm leading-relaxed mb-4">
               "{s.message}"
             </p>
-
-            <div className="mt-auto pt-4 border-t border-neutral-700/50 w-full">
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">
-                Earned{" "}
-                {new Date(s.awardedAt).toLocaleDateString(undefined, {
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
+            <div className="mt-auto pt-4 border-t border-neutral-700/50 w-full text-[10px] text-neutral-500 font-bold uppercase tracking-widest">
+              Awarded{" "}
+              {new Date(s.awardedAt).toLocaleDateString(undefined, {
+                month: "short",
+                year: "numeric",
+              })}
             </div>
           </motion.div>
         ))}
@@ -267,7 +278,6 @@ const StickerGallery = ({ stickers }: { stickers: any[] }) => {
 };
 
 // --- SVG Icons ---
-
 const StickerIcon = () => (
   <svg
     className="w-8 h-8 text-green-500"
@@ -283,7 +293,6 @@ const StickerIcon = () => (
     />
   </svg>
 );
-
 const BackIcon = () => (
   <svg
     className="h-5 w-5"
@@ -299,7 +308,6 @@ const BackIcon = () => (
     />
   </svg>
 );
-
 const TicketIcon = () => (
   <svg
     className="w-8 h-8 text-green-500"
@@ -315,7 +323,6 @@ const TicketIcon = () => (
     />
   </svg>
 );
-
 const CalendarSmallIcon = () => (
   <svg
     className="w-4 h-4"

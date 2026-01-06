@@ -7,24 +7,24 @@ import { motion } from "framer-motion";
 // I've updated "Web Engineering" to "Cybersecurity" to match previous versions.
 const domains = [
   {
-    title: "Computer Graphics",
-    description:
-      "Diving into the world of rendering, simulation, and virtual reality to create stunning visual experiences and tools.",
-  },
-  {
-    title: "Cybersecurity",
-    description:
-      "Exploring digital defense, ethical hacking, and cryptography to secure systems and protect information in a connected world.",
-  },
-  {
-    title: "Distributed Systems",
-    description:
-      "Building scalable and resilient systems that operate across multiple machines, tackling challenges in concurrency and fault tolerance.",
-  },
-  {
     title: "System Software",
     description:
-      "Working close to the metal, focusing on operating systems, compilers, and the core software that powers all other applications.",
+      "Engineering the backbone of computing — operating systems, low-level tools, and performance-critical software that everything else runs on.",
+  },
+  {
+    title: "Web Engineering",
+    description:
+      "Designing and building fast, scalable, and user-centric web applications that seamlessly connect ideas to real users.",
+  },
+  {
+    title: "Video Editing",
+    description:
+      "Transforming raw footage into compelling stories through precise cuts, motion, sound, and visual rhythm.",
+  },
+  {
+    title: "Public Relations",
+    description:
+      "Crafting narratives, managing perception, and building strong public identities through clear communication and strategic outreach.",
   },
 ];
 

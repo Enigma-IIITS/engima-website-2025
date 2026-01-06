@@ -6,7 +6,18 @@ import { cn } from "@/lib/utils";
 import { motion, useInView } from "framer-motion";
 import { useAuth } from "@/hooks/AuthContext";
 
-export default function FeedbackForm() {
+// Added props to handle specific events
+interface FeedbackFormProps {
+  eventId?: string;
+  eventTitle?: string;
+  onSuccess?: () => void;
+}
+
+export default function FeedbackForm({
+  eventId,
+  eventTitle,
+  onSuccess,
+}: FeedbackFormProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
   const { user, token } = useAuth();
@@ -14,19 +25,26 @@ export default function FeedbackForm() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    title: "",
     message: "",
+    overallRating: 5,
   });
+
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Pre-fill form if user is logged in
     if (user) {
-      setFormData((prev) => ({ ...prev, name: user.name, email: user.email }));
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name,
+        email: user.email,
+        title: eventTitle ? `Feedback for ${eventTitle}` : "",
+      }));
     }
-  }, [user]);
+  }, [user, eventTitle]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -47,17 +65,30 @@ export default function FeedbackForm() {
 
     try {
       const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/feedback`;
+
+      // Building the body according to your professional schema
+      const feedbackBody = {
+        type: eventId ? "event" : "website",
+        event: eventId || undefined,
+        title:
+          formData.title ||
+          (eventId ? `Event Feedback: ${eventTitle}` : "Website Feedback"),
+        content: formData.message,
+        ratings: eventId
+          ? {
+              overall: formData.overallRating,
+              // You can add more detailed rating inputs in the UI later
+            }
+          : undefined,
+      };
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: `Website Feedback from ${formData.name}`,
-          content: formData.message,
-          type: "website",
-        }),
+        body: JSON.stringify(feedbackBody),
       });
 
       const result = await response.json();
@@ -65,7 +96,8 @@ export default function FeedbackForm() {
         throw new Error(result.message || "Something went wrong.");
 
       setStatus("success");
-      setFormData((prev) => ({ ...prev, message: "" })); // Clear only the message
+      setFormData((prev) => ({ ...prev, message: "", title: "" }));
+      if (onSuccess) setTimeout(onSuccess, 2000);
     } catch (err: any) {
       setFormError(err.message);
       setStatus("error");
@@ -79,85 +111,100 @@ export default function FeedbackForm() {
       initial={{ opacity: 0, y: 30 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="relative w-full max-w-md mx-auto p-6 rounded-lg bg-black border border-green-500 shadow-[0_0_15px_rgba(0,255,0,0.3)]"
+      className="relative w-full max-w-md mx-auto p-6 rounded-2xl bg-black border border-green-500/50 shadow-[0_0_30px_rgba(0,255,0,0.15)]"
     >
-      <div
-        className="absolute inset-0 pointer-events-none z-10"
-        style={{
-          backgroundImage: `linear-gradient(90deg, rgba(0,255,0,0.1) 1px, transparent 1px), linear-gradient(rgba(0,255,0,0.1) 1px, transparent 1px)`,
-          backgroundSize: "20px 20px",
-          opacity: 0.3,
-        }}
-      />
-      <h2 className="text-2xl font-bold text-white mb-4">FEEDBACK</h2>
-      <p className="text-sm text-gray-400 mb-6">
-        Help us improve ENIGMA. Your thoughts matter.
+      <h2 className="text-2xl font-black text-white mb-1 uppercase tracking-tighter">
+        {eventId ? "Event Review" : "Feedback"}
+      </h2>
+      <p className="text-xs text-gray-500 mb-6 font-medium">
+        {eventId
+          ? `Sharing thoughts on ${eventTitle}`
+          : "Help us improve the ENIGMA platform."}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Rating Stars - Only shows for events */}
+        {eventId && (
+          <div className="flex flex-col gap-2 mb-4">
+            <Label className="text-neutral-400 text-xs uppercase font-bold">
+              Overall Rating
+            </Label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() =>
+                    setFormData({ ...formData, overallRating: num })
+                  }
+                  className={cn(
+                    "w-10 h-10 rounded-lg border transition-all font-bold",
+                    formData.overallRating >= num
+                      ? "bg-green-600 border-green-500 text-black"
+                      : "bg-zinc-900 border-neutral-800 text-neutral-500"
+                  )}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
-          <Label htmlFor="name" className="text-white">
-            Full Name
+          <Label
+            htmlFor="title"
+            className="text-neutral-400 text-xs uppercase font-bold"
+          >
+            Subject
           </Label>
           <Input
-            id="name"
-            name="name"
-            value={formData.name}
+            id="title"
+            name="title"
+            value={formData.title}
             onChange={handleChange}
-            placeholder="Login to auto-fill"
-            className="bg-zinc-900 text-white border-green-700 focus:ring-green-500"
-            disabled={!!user}
+            placeholder="What is this regarding?"
+            className="bg-zinc-900 border-neutral-800 text-white focus:ring-green-500 h-11"
+            required
           />
         </div>
+
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-white">
-            Email Address
-          </Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Login to auto-fill"
-            className="bg-zinc-900 text-white border-green-700 focus:ring-green-500"
-            disabled={!!user}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="message" className="text-white">
-            Your Feedback
+          <Label
+            htmlFor="message"
+            className="text-neutral-400 text-xs uppercase font-bold"
+          >
+            Your Message
           </Label>
           <textarea
             id="message"
             name="message"
             value={formData.message}
             onChange={handleChange}
-            placeholder="Share your thoughts, suggestions, or concerns..."
-            rows={5}
+            placeholder="Be as specific as possible..."
+            rows={4}
             required
-            className={cn(
-              "w-full rounded-md border-none bg-zinc-900 px-3 py-2 text-sm text-white transition duration-400 focus-visible:ring-[2px] focus-visible:ring-green-500 focus-visible:outline-none resize-none",
-              "placeholder:text-gray-500"
-            )}
+            className="w-full rounded-xl bg-zinc-900 border border-neutral-800 p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-all resize-none"
           />
         </div>
 
         {status === "error" && (
-          <p className="text-sm text-red-500">{formError}</p>
+          <p className="text-xs text-red-500 font-bold bg-red-500/10 p-2 rounded border border-red-500/20">
+            {formError}
+          </p>
         )}
         {status === "success" && (
-          <p className="text-sm text-green-500">
-            Thank you! Your feedback has been submitted.
+          <p className="text-xs text-green-500 font-bold bg-green-500/10 p-2 rounded border border-green-500/20">
+            Sent! We appreciate your input.
           </p>
         )}
 
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="w-full mt-4 bg-green-600 hover:bg-green-700 text-black font-medium py-2 px-4 rounded-md transition-colors duration-300 disabled:bg-neutral-600 disabled:cursor-not-allowed"
+          className="w-full mt-2 bg-green-600 hover:bg-green-500 text-black font-black py-3 rounded-xl transition-all disabled:bg-neutral-800 disabled:text-neutral-600 uppercase tracking-widest text-xs"
         >
-          {status === "submitting" ? "Submitting..." : "Submit Feedback"}
+          {status === "submitting" ? "Encrypting..." : "Submit Feedback"}
         </button>
       </form>
     </motion.div>

@@ -16,7 +16,7 @@ export default function HomePage() {
   return (
     <>
       <FloatingNav navItems={navItems} />
-      <BackgroundRippleEffectDemo />e
+      <BackgroundRippleEffectDemo />
     </>
   );
 }

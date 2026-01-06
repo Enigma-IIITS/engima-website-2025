@@ -1,5 +1,6 @@
 const express = require("express");
 const User = require("../models/User");
+const { Member } = require("../models/Member"); // Required for automatic position cleanup
 const { auth, admin } = require("../middleware/auth");
 const {
   validateUserUpdate,
@@ -14,17 +15,19 @@ const {
   getPaginationData,
   buildPaginationResponse,
 } = require("../utils/response");
+
 const router = express.Router();
 
-// @route   GET /api/users
-// @desc    Get all users
-// @access  Private/Admin
+/**
+ * @route   GET /api/users
+ * @desc    Get all users (restricted by privilege level on frontend)
+ * @access  Private/Admin
+ */
 router.get("/", auth, admin, async (req, res) => {
   try {
     const { page, limit, skip } = getPaginationData(req);
     const { search, role, isActive } = req.query;
 
-    // Build filter object
     const filter = {};
     if (search) {
       filter.$or = [
@@ -36,15 +39,14 @@ router.get("/", auth, admin, async (req, res) => {
     if (role) filter.role = role;
     if (isActive !== undefined) filter.isActive = isActive === "true";
 
-    // Get users with pagination
     const users = await User.find(filter)
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
     const totalCount = await User.countDocuments(filter);
-
     const response = buildPaginationResponse(users, totalCount, page, limit);
+
     sendSuccessResponse(res, "Users retrieved successfully", response);
   } catch (error) {
     console.error("Get users error:", error);
@@ -52,93 +54,24 @@ router.get("/", auth, admin, async (req, res) => {
   }
 });
 
-// @route   GET /api/users/:id
-// @desc    Get user by ID
-// @access  Private
-router.get("/:id", auth, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Users can only view their own profile unless they're admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== id) {
-      return sendForbiddenResponse(res, "Access denied");
-    }
-
-    const user = await User.findById(id);
-    if (!user) {
-      return sendNotFoundResponse(res, "User not found");
-    }
-
-    sendSuccessResponse(res, "User retrieved successfully", user.toJSON());
-  } catch (error) {
-    console.error("Get user error:", error);
-    if (error.name === "CastError") {
-      return sendErrorResponse(res, "Invalid user ID format");
-    }
-    sendServerErrorResponse(res, "Error retrieving user");
-  }
-});
-
-// @route   PUT /api/users/:id
-// @desc    Update user profile
-// @access  Private
-router.put(
-  "/:id",
-  auth,
-  validateUserUpdate,
-  handleValidationErrors,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      // Users can only update their own profile unless they're admin
-      if (req.user.role !== "admin" && req.user._id.toString() !== id) {
-        return sendForbiddenResponse(res, "Access denied");
-      }
-
-      const updateData = { ...req.body };
-
-      // Remove fields that shouldn't be updated via this endpoint
-      delete updateData.password;
-      delete updateData.email;
-      delete updateData.role; // Only admins can change roles via separate endpoint
-      delete updateData.isEmailVerified;
-
-      const user = await User.findByIdAndUpdate(id, updateData, {
-        new: true,
-        runValidators: true,
-      });
-
-      if (!user) {
-        return sendNotFoundResponse(res, "User not found");
-      }
-
-      sendSuccessResponse(res, "User updated successfully", user.toJSON());
-    } catch (error) {
-      console.error("Update user error:", error);
-      if (error.name === "CastError") {
-        return sendErrorResponse(res, "Invalid user ID format");
-      }
-      if (error.name === "ValidationError") {
-        return sendErrorResponse(res, error.message);
-      }
-      sendServerErrorResponse(res, "Error updating user");
-    }
-  }
-);
-
-// @route   PUT /api/users/:id/role
-// @desc    Update user role
-// @access  Private/Admin
+/**
+ * @route   PUT /api/users/:id/role
+ * @desc    Update user role (Promote to Admin/Member or Demote to User)
+ * @access  Private/Admin
+ */
 router.put("/:id/role", auth, admin, async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!["user", "admin", "moderator"].includes(role)) {
-      return sendErrorResponse(res, "Invalid role");
+    if (!["user", "admin"].includes(role)) {
+      return sendErrorResponse(
+        res,
+        "Invalid role. Use 'admin' for club members or 'user' for standard accounts."
+      );
     }
 
+    // 1. Update the User role in the primary User collection
     const user = await User.findByIdAndUpdate(
       id,
       { role },
@@ -149,7 +82,35 @@ router.put("/:id/role", auth, admin, async (req, res) => {
       return sendNotFoundResponse(res, "User not found");
     }
 
-    sendSuccessResponse(res, "User role updated successfully", user.toJSON());
+    // 🚀 DEMOTION LOGIC: Automatically clean up Member profile if returned to 'user' role
+    if (role === "user") {
+      const member = await Member.findOne({ user: id });
+
+      if (member) {
+        // Mark all historical club positions as inactive
+        member.roles = member.roles.map((r) => ({
+          ...r,
+          isActive: false,
+          endDate: new Date(),
+        }));
+
+        // Remove current primary role and set status to inactive
+        member.primaryRole = undefined;
+        member.availability = {
+          ...member.availability,
+          status: "inactive",
+          lastActive: new Date(),
+        };
+
+        await member.save();
+      }
+    }
+
+    sendSuccessResponse(
+      res,
+      `User successfully ${role === "admin" ? "promoted" : "demoted"}`,
+      user.toJSON()
+    );
   } catch (error) {
     console.error("Update user role error:", error);
     if (error.name === "CastError") {
@@ -159,18 +120,20 @@ router.put("/:id/role", auth, admin, async (req, res) => {
   }
 });
 
-// @route   DELETE /api/users/:id
-// @desc    Delete user (soft delete)
-// @access  Private/Admin
+/**
+ * @route   DELETE /api/users/:id
+ * @desc    Soft delete user and remove from club roster
+ * @access  Private/Admin
+ */
 router.delete("/:id", auth, admin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Prevent admin from deleting themselves
     if (req.user._id.toString() === id) {
       return sendForbiddenResponse(res, "Cannot delete your own account");
     }
 
+    // Soft delete user
     const user = await User.findByIdAndUpdate(
       id,
       { isActive: false },
@@ -181,12 +144,15 @@ router.delete("/:id", auth, admin, async (req, res) => {
       return sendNotFoundResponse(res, "User not found");
     }
 
-    sendSuccessResponse(res, "User deactivated successfully");
+    // Clean up member record if it exists
+    await Member.findOneAndUpdate(
+      { user: id },
+      { "availability.status": "graduated", "roles.$[].isActive": false }
+    );
+
+    sendSuccessResponse(res, "User deactivated and removed from active roster");
   } catch (error) {
     console.error("Delete user error:", error);
-    if (error.name === "CastError") {
-      return sendErrorResponse(res, "Invalid user ID format");
-    }
     sendServerErrorResponse(res, "Error deactivating user");
   }
 });

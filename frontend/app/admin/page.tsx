@@ -5,15 +5,43 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { StickerIcon } from "lucide-react";
 
 // --- Main Admin Page Component ---
 export default function AdminPage() {
-  const { user, loading } = useAuth();
+  const { user, token, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("events");
+  const [memberProfile, setMemberProfile] = useState<any>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
-  if (loading) {
+  // 🚀 LEADER POSITIONS: Only these club ranks can promote others or delete events
+  const LEAD_POSITIONS = ["president", "vice_president", "team_lead"];
+
+  useEffect(() => {
+    if (token) {
+      axios
+        .get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/members/my-profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => {
+          if (res.data.success) setMemberProfile(res.data.data);
+        })
+        .catch(() => setMemberProfile(null))
+        .finally(() => setIsProfileLoading(false));
+    }
+  }, [token]);
+
+  // Determine if the current admin is a Lead
+  const isLead =
+    memberProfile?.roles?.some(
+      (r: any) =>
+        r.isActive && LEAD_POSITIONS.includes(r.position.toLowerCase())
+    ) ||
+    LEAD_POSITIONS.includes(
+      memberProfile?.primaryRole?.position?.toLowerCase()
+    );
+
+  if (loading || isProfileLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
         <Spinner />
@@ -22,14 +50,12 @@ export default function AdminPage() {
   }
 
   if (!user || user.role !== "admin") {
-    if (typeof window !== "undefined") {
-      router.push("/login");
-    }
+    if (typeof window !== "undefined") router.push("/login");
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 sm:p-8">
+    <div className="min-h-screen bg-black text-white p-4 sm:p-8 font-sans">
       <div className="max-w-7xl mx-auto">
         <Link
           href="/"
@@ -38,38 +64,49 @@ export default function AdminPage() {
           <BackIcon />
           <span className="ml-2">Back to Home</span>
         </Link>
-        <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-neutral-400 mb-8">
-          Welcome, {user.name}. Manage your club's activities.
-        </p>
 
-        <div className="flex border-b border-neutral-800 mb-8 overflow-x-auto">
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
+            <p className="text-neutral-400">
+              Welcome, {user.name}.{" "}
+              {isLead
+                ? "Control Panel Access Granted."
+                : "Club Management Access."}
+            </p>
+          </div>
+          <div className="text-[10px] bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full text-zinc-500 font-mono tracking-widest uppercase">
+            Privilege: {isLead ? "Lead Admin" : "Club Member"}
+          </div>
+        </div>
+
+        <div className="flex border-b border-neutral-800 mb-8 overflow-x-auto no-scrollbar">
           <TabButton
-            title="Manage Events"
+            title="Events"
             icon={<CalendarIcon />}
             isActive={activeTab === "events"}
             onClick={() => setActiveTab("events")}
           />
           <TabButton
-            title="User Management"
+            title={isLead ? "User Management" : "Club Roster"}
             icon={<UsersIcon />}
             isActive={activeTab === "users"}
             onClick={() => setActiveTab("users")}
           />
           <TabButton
-            title="Manage Stickers"
-            icon={<StickerIcon />} // Create this icon below
+            title="Stickers"
+            icon={<StickerIcon />}
             isActive={activeTab === "stickers"}
             onClick={() => setActiveTab("stickers")}
           />
           <TabButton
-            title="Manage Feedback"
+            title="Feedback"
             icon={<FeedbackIcon />}
             isActive={activeTab === "feedback"}
             onClick={() => setActiveTab("feedback")}
           />
           <TabButton
-            title="Manage Profile"
+            title="My Profile"
             icon={<ProfileIcon />}
             isActive={activeTab === "profile"}
             onClick={() => setActiveTab("profile")}
@@ -85,8 +122,8 @@ export default function AdminPage() {
               exit={{ y: -10, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === "events" && <EventManagement />}
-              {activeTab === "users" && <UserManagement />}
+              {activeTab === "events" && <EventManagement isLead={isLead} />}
+              {activeTab === "users" && <UserManagement isLead={isLead} />}
               {activeTab === "stickers" && <StickerManagement />}
               {activeTab === "feedback" && <FeedbackManagement />}
               {activeTab === "profile" && <ProfileManagement />}
@@ -98,8 +135,8 @@ export default function AdminPage() {
   );
 }
 
-// --- Event Management Component ---
-const EventManagement = () => {
+// --- Event Management ---
+const EventManagement = ({ isLead }: { isLead: boolean }) => {
   const { token } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,11 +153,13 @@ const EventManagement = () => {
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/events`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       if (res.data.success) setEvents(res.data.data.data);
     } catch (error) {
-      console.error("Failed to fetch events", error);
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -130,45 +169,19 @@ const EventManagement = () => {
     if (token) fetchEvents();
   }, [token]);
 
-  const handleCreateNew = () => {
-    setEditingEvent(null);
-    setIsEventModalOpen(true);
-  };
-  const handleEdit = (event: any) => {
-    setEditingEvent(event);
-    setIsEventModalOpen(true);
-  };
-
   const handleDelete = async (eventId: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this event? This action cannot be undone."
-      )
-    )
-      return;
+    if (!window.confirm("Are you sure? This cannot be undone.")) return;
     try {
       await axios.delete(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/events/${eventId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-      alert("Event deleted successfully");
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) => event._id !== eventId)
-      );
-    } catch (error) {
-      console.error("Failed to delete event", error);
-      alert("Failed to delete event.");
-    }
-  };
-
-  const handleSaveSuccess = (updatedEvent: any) => {
-    const isEditing = events.some((e) => e._id === updatedEvent._id);
-    if (isEditing) {
-      setEvents((prevEvents) =>
-        prevEvents.map((e) => (e._id === updatedEvent._id ? updatedEvent : e))
-      );
-    } else {
-      setEvents((prevEvents) => [updatedEvent, ...prevEvents]);
+      setEvents((prev) => prev.filter((e) => e._id !== eventId));
+      alert("Deleted.");
+    } catch (err) {
+      alert("Failed to delete.");
     }
   };
 
@@ -179,14 +192,16 @@ const EventManagement = () => {
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/rsvp/event/${event._id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       if (res.data.success) {
         setRegistrations(res.data.data.registrations);
         setRegStats(res.data.data.stats);
       }
-    } catch (error) {
-      console.error(`Failed to fetch RSVPs for event ${event._id}`, error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsRsvpLoading(false);
     }
@@ -196,11 +211,14 @@ const EventManagement = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold flex items-center gap-2">
-          <CalendarIcon /> All Events
+          <CalendarIcon /> Club Events
         </h2>
         <button
-          onClick={handleCreateNew}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-black font-bold rounded-lg hover:bg-green-500 transition-transform hover:scale-105 active:scale-95"
+          onClick={() => {
+            setEditingEvent(null);
+            setIsEventModalOpen(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-black font-bold rounded-lg hover:bg-green-500 transition-transform"
         >
           <PlusIcon /> Create Event
         </button>
@@ -211,49 +229,46 @@ const EventManagement = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {events.length > 0 ? (
-            events.map((event) => (
-              <div
-                key={event._id}
-                className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4 hover:border-neutral-700 transition-colors"
-              >
-                <div>
-                  <h3 className="font-bold text-white">{event.title}</h3>
-                  <p className="text-sm text-neutral-400">
-                    {new Date(event.startDate).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                  <StatusBadge status={event.status} />
-                  <IconButton
-                    onClick={() => handleViewRsvps(event)}
-                    tooltip="View RSVPs"
-                  >
-                    <EyeIcon />
-                  </IconButton>
-                  <IconButton
-                    onClick={() => handleEdit(event)}
-                    tooltip="Edit Event"
-                  >
-                    <EditIcon />
-                  </IconButton>
+          {events.map((event) => (
+            <div
+              key={event._id}
+              className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4"
+            >
+              <div>
+                <h3 className="font-bold text-white">{event.title}</h3>
+                <p className="text-sm text-neutral-400">
+                  {new Date(event.startDate).toDateString()}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={event.status} />
+                <IconButton
+                  onClick={() => handleViewRsvps(event)}
+                  tooltip="View RSVPs"
+                >
+                  <EyeIcon />
+                </IconButton>
+                <IconButton
+                  onClick={() => {
+                    setEditingEvent(event);
+                    setIsEventModalOpen(true);
+                  }}
+                  tooltip="Edit"
+                >
+                  <EditIcon />
+                </IconButton>
+                {isLead && (
                   <IconButton
                     onClick={() => handleDelete(event._id)}
-                    tooltip="Delete Event"
+                    tooltip="Delete"
                     className="text-red-500 hover:bg-red-500/10"
                   >
                     <TrashIcon />
                   </IconButton>
-                </div>
+                )}
               </div>
-            ))
-          ) : (
-            <EmptyState message="No events have been created yet." />
-          )}
+            </div>
+          ))}
         </div>
       )}
       <AnimatePresence>
@@ -261,11 +276,9 @@ const EventManagement = () => {
           <EventModal
             event={editingEvent}
             onClose={() => setIsEventModalOpen(false)}
-            onSave={handleSaveSuccess}
+            onSave={fetchEvents}
           />
         )}
-      </AnimatePresence>
-      <AnimatePresence>
         {isRsvpModalOpen && viewingEvent && (
           <RegistrationsModal
             isOpen={isRsvpModalOpen}
@@ -280,8 +293,9 @@ const EventManagement = () => {
     </div>
   );
 };
-// --- User Management Component ---
-const UserManagement = () => {
+
+// --- User Management ---
+const UserManagement = ({ isLead }: { isLead: boolean }) => {
   const { user: adminUser, token } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -291,11 +305,13 @@ const UserManagement = () => {
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/users`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       if (res.data.success) setUsers(res.data.data.data);
-    } catch (error) {
-      console.error("Failed to fetch users", error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -305,66 +321,75 @@ const UserManagement = () => {
     if (token) fetchUsers();
   }, [token]);
 
-  const handlePromote = async (userId: string) => {
-    if (!window.confirm("Are you sure you want to promote this user to Admin?"))
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    const action = newRole === "admin" ? "promote" : "demote";
+    if (!window.confirm(`Are you sure you want to ${action} this user?`))
       return;
+
     try {
       await axios.put(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${userId}/role`,
-        { role: "admin" },
+        { role: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert("User promoted to admin successfully!");
-      fetchUsers();
-    } catch (error) {
-      console.error("Failed to promote user", error);
-      alert("Failed to promote user.");
+      alert(`User ${action}d successfully.`);
+      fetchUsers(); // Refresh the list
+    } catch (err) {
+      alert(`Failed to ${action} user.`);
     }
   };
 
   return (
-    <div>
+    <div className="space-y-4">
       <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-        <UsersIcon /> All Users
+        <UsersIcon /> {isLead ? "Manage Members" : "Club Roster"}
       </h2>
       {isLoading ? (
-        <div className="flex justify-center p-10">
-          <Spinner />
-        </div>
+        <Spinner />
       ) : (
-        <div className="space-y-4">
-          {users.length > 0 ? (
-            users.map((user) => (
-              <div
-                key={user._id}
-                className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4"
-              >
-                <div>
-                  <h3 className="font-bold text-white">{user.name}</h3>
-                  <p className="text-sm text-neutral-400">{user.email}</p>
+        <div className="grid gap-4">
+          {users.map((u) => (
+            <div
+              key={u._id}
+              className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex justify-between items-center transition-all hover:border-neutral-700"
+            >
+              <div>
+                <h3 className="font-bold text-white">{u.name}</h3>
+                <p className="text-sm text-neutral-500">{u.email}</p>
+                <div className="mt-2">
+                  <RoleBadge role={u.role} />
                 </div>
-                <div className="flex items-center gap-4">
-                  <RoleBadge role={user.role} />
-                  {user.role !== "admin" && user._id !== adminUser?._id && (
+              </div>
+
+              {/* 🚀 Lead-only controls */}
+              {isLead && u._id !== adminUser?._id && (
+                <div className="flex gap-2">
+                  {u.role !== "admin" ? (
                     <button
-                      onClick={() => handlePromote(user._id)}
-                      className="text-sm bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded-md transition-all duration-200 hover:scale-105 active:scale-95"
+                      onClick={() => handleUpdateRole(u._id, "admin")}
+                      className="text-xs bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl transition-all"
                     >
-                      Promote to Admin
+                      Promote to Member
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUpdateRole(u._id, "user")}
+                      className="text-xs bg-red-600/20 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white font-bold py-2 px-4 rounded-xl transition-all"
+                    >
+                      Demote to User
                     </button>
                   )}
                 </div>
-              </div>
-            ))
-          ) : (
-            <EmptyState message="No other users found." />
-          )}
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 };
 
+// --- Sticker Management ---
 const StickerManagement = () => {
   const { token } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
@@ -388,163 +413,157 @@ const StickerManagement = () => {
 
   const handleAward = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserId || !file)
-      return alert("Please select a user and an image");
-
+    if (!selectedUserId || !file) return alert("Select user and image");
     setLoading(true);
     const data = new FormData();
     data.append("stickerName", formData.name);
     data.append("message", formData.message);
     data.append("stickerImage", file);
-
     try {
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/members/award-sticker/${selectedUserId}`,
         data,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-      alert("Sticker awarded successfully!");
+      alert("Awarded!");
       setFormData({ name: "", message: "" });
       setFile(null);
     } catch (err) {
-      alert("Failed to award sticker");
+      alert("Error.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-      <h2 className="text-2xl font-semibold mb-6">Award a Sticker</h2>
+    <div className="max-w-2xl mx-auto bg-neutral-900 border border-neutral-800 rounded-3xl p-8">
+      <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+        <StickerIcon className="text-green-400" /> Award New Sticker
+      </h2>
       <form onSubmit={handleAward} className="space-y-4">
-        <div>
-          <label className="block text-sm mb-1 text-neutral-400">
-            Select Member
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+            Recipient
           </label>
           <select
-            className="w-full bg-black border border-neutral-700 p-2 rounded text-white"
+            className="w-full bg-black border border-neutral-700 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500"
             onChange={(e) => setSelectedUserId(e.target.value)}
             value={selectedUserId}
           >
-            <option value="">-- Select a User --</option>
+            <option value="">-- Choose User --</option>
             {users.map((u) => (
               <option key={u._id} value={u._id}>
-                {u.name} ({u.email})
+                {u.name}
               </option>
             ))}
           </select>
         </div>
         <FormInput
-          label="Sticker Title"
+          label="Badge Name"
           value={formData.name}
           onChange={(e: any) =>
             setFormData({ ...formData, name: e.target.value })
           }
-          placeholder="e.g. Bug Hunter"
+          placeholder="e.g. Code Ninja"
           required
         />
         <FormTextArea
-          label="Award Message"
+          label="Recognition Message"
           value={formData.message}
           onChange={(e: any) =>
             setFormData({ ...formData, message: e.target.value })
           }
-          placeholder="Why are they getting this?"
+          placeholder="Why are they being recognized?"
           required
         />
-
-        <div>
-          <label className="block text-sm mb-1 text-neutral-400">
-            Sticker Image
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-neutral-500 uppercase">
+            Sticker Asset
           </label>
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-green-600 file:text-black hover:file:bg-green-500"
+            className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-green-600 file:text-black font-bold cursor-pointer"
           />
         </div>
-
         <button
           disabled={loading}
           type="submit"
-          className="w-full bg-green-600 text-black font-bold py-2 rounded mt-4"
+          className="w-full bg-green-600 text-black font-black py-4 rounded-xl mt-4 hover:bg-green-500 transition-all"
         >
-          {loading ? "Awarding..." : "Award Sticker"}
+          {loading ? "PROCESSING..." : "AWARD ACHIEVEMENT"}
         </button>
       </form>
     </div>
   );
 };
 
-// --- Feedback Management Component ---
+// --- Feedback Management ---
 const FeedbackManagement = () => {
   const { token } = useAuth();
   const [feedbackItems, setFeedbackItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchFeedback = async () => {
-    setIsLoading(true);
-    try {
-      const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/feedback`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (res.data.success) {
-        setFeedbackItems(res.data.data.feedback);
-      }
-    } catch (error) {
-      console.error("Failed to fetch feedback", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (token) {
-      fetchFeedback();
+      axios
+        .get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/feedback`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => setFeedbackItems(res.data.data.feedback))
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
     }
   }, [token]);
 
   return (
-    <div>
-      <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-        <FeedbackIcon /> All User Feedback
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold flex items-center gap-3">
+        <FeedbackIcon /> Inbox
       </h2>
       {isLoading ? (
-        <div className="flex justify-center p-10">
-          <Spinner />
-        </div>
+        <Spinner />
       ) : (
-        <div className="space-y-4">
-          {feedbackItems.length > 0 ? (
-            feedbackItems.map((item) => (
-              <div
-                key={item._id}
-                className="bg-neutral-900 border border-neutral-800 rounded-lg p-4"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-bold text-white">{item.title}</h3>
-                    <p className="text-sm text-neutral-400">
-                      From: {item.user?.name || "Anonymous"} (
-                      {item.user?.email || "N/A"}) on{" "}
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <StatusBadge status={item.status} />
+        feedbackItems.map((item) => (
+          <div
+            key={item._id}
+            className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 transition-all hover:border-neutral-600"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <div className="flex gap-2 items-center mb-2">
+                  <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
+                    {item.type}
+                  </span>
+                  {item.event && (
+                    <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-black uppercase tracking-widest border border-green-500/20">
+                      Event: {item.event.title}
+                    </span>
+                  )}
                 </div>
-                <p className="mt-4 text-neutral-300 border-l-2 border-neutral-700 pl-4">
-                  {item.content}
+                <h3 className="text-xl font-bold text-white">{item.title}</h3>
+                <p className="text-sm text-neutral-500">
+                  From: {item.user?.name}
                 </p>
               </div>
-            ))
-          ) : (
-            <EmptyState message="No feedback has been submitted yet." />
-          )}
-        </div>
+              <div className="text-right">
+                <StatusBadge status={item.status} />
+                {item.ratings?.overall && (
+                  <div className="mt-2 text-yellow-500">
+                    {"★".repeat(item.ratings.overall)}
+                    {"☆".repeat(5 - item.ratings.overall)}
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-neutral-300 bg-black/30 p-4 rounded-xl border border-neutral-800">
+              {item.content}
+            </p>
+          </div>
+        ))
       )}
     </div>
   );
@@ -1197,20 +1216,106 @@ const EventModal = ({
   );
 };
 
-// --- UI & Helper Components ---
+// --- Reusable UI Elements (Badges, Buttons, etc.) ---
 const TabButton = ({ title, isActive, onClick, icon }: any) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${
+    className={`flex items-center gap-2 whitespace-nowrap px-6 py-4 text-sm font-bold transition-all ${
       isActive
-        ? "border-b-2 border-green-500 text-white"
+        ? "border-b-2 border-green-500 text-white bg-green-500/5"
         : "text-neutral-500 hover:text-neutral-300 border-b-2 border-transparent"
     }`}
   >
-    {icon}
-    {title}
+    {icon} {title}
   </button>
 );
+const StatusBadge = ({ status }: { status: string }) => {
+  const styles: any = {
+    published: "bg-green-900/50 text-green-400 border-green-500/20",
+    draft: "bg-yellow-900/50 text-yellow-400 border-yellow-500/20",
+    cancelled: "bg-red-900/50 text-red-400 border-red-500/20",
+  };
+  return (
+    <span
+      className={`text-[10px] font-black px-3 py-1 rounded-full uppercase border ${
+        styles[status] || "bg-zinc-800 text-zinc-400 border-zinc-700"
+      }`}
+    >
+      {status}
+    </span>
+  );
+};
+const RoleBadge = ({ role }: { role: string }) => (
+  <span
+    className={`text-[10px] font-black px-3 py-1 rounded-full uppercase border ${
+      role === "admin"
+        ? "bg-green-900/50 text-green-400 border-green-500/20"
+        : "bg-zinc-800 text-zinc-400 border-zinc-700"
+    }`}
+  >
+    {role === "admin" ? "Club Member" : "Standard User"}
+  </span>
+);
+
+// --- Icons & Form Fields ---
+const Spinner = () => (
+  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+);
+const FormInput = ({ label, ...props }: any) => (
+  <div className="space-y-1">
+    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+      {label}
+    </label>
+    <input
+      className="w-full bg-black border border-neutral-700 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500"
+      {...props}
+    />
+  </div>
+);
+const FormTextArea = ({ label, rows = 4, ...props }: any) => (
+  <div className="space-y-1">
+    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+      {label}
+    </label>
+    <textarea
+      rows={rows}
+      className="w-full bg-black border border-neutral-700 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500 resize-none"
+      {...props}
+    />
+  </div>
+);
+const FormSelect = ({ label, options, ...props }: any) => (
+  <div className="space-y-1">
+    <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+      {label}
+    </label>
+    <select
+      className="w-full bg-black border border-neutral-700 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500"
+      {...props}
+    >
+      {options.map((opt: string) => (
+        <option key={opt} value={opt}>
+          {opt.toUpperCase()}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+const IconButton = ({
+  onClick,
+  children,
+  className = "text-neutral-400",
+  tooltip,
+}: any) => (
+  <button
+    onClick={onClick}
+    title={tooltip}
+    className={`p-2 rounded-lg transition-colors hover:bg-zinc-800 ${className}`}
+  >
+    {children}
+  </button>
+);
+
 const BackIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -1227,114 +1332,87 @@ const BackIcon = () => (
     />
   </svg>
 );
-const FormInput = ({ label, ...props }: any) => (
-  <div>
-    <label className="block text-sm font-medium text-neutral-300 mb-1">
-      {label}
-    </label>
-    <input
-      className="block w-full bg-neutral-800 border-neutral-700 border rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-      {...props}
-    />
-  </div>
-);
-const FormTextArea = ({ label, rows = 4, ...props }: any) => (
-  <div>
-    <label className="block text-sm font-medium text-neutral-300 mb-1">
-      {label}
-    </label>
-    <textarea
-      rows={rows}
-      className="block w-full bg-neutral-800 border-neutral-700 border rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-      {...props}
-    />
-  </div>
-);
-const FormSelect = ({ label, options, ...props }: any) => (
-  <div>
-    <label className="block text-sm font-medium text-neutral-300 mb-1">
-      {label}
-    </label>
-    <select
-      className="block w-full bg-neutral-800 border-neutral-700 border rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-      {...props}
-    >
-      {options.map((opt: string) => (
-        <option key={opt} value={opt}>
-          {opt.charAt(0).toUpperCase() + opt.slice(1)}
-        </option>
-      ))}
-    </select>
-  </div>
-);
-const Spinner = () => (
-  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-);
-const EmptyState = ({ message }: { message: string }) => (
-  <div className="text-center p-10">
-    <p className="text-neutral-500">{message}</p>
-  </div>
-);
-const IconButton = ({
-  onClick,
-  children,
-  className = "text-neutral-400 hover:bg-neutral-800",
-  tooltip,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-  className?: string;
-  tooltip: string;
-}) => (
-  <button
-    onClick={onClick}
-    title={tooltip}
-    className={`p-2 rounded-full transition-colors ${className}`}
+const CalendarIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
   >
-    {children}
-  </button>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
+  </svg>
 );
-const StatusBadge = ({ status }: { status: string }) => {
-  const styles: { [key: string]: string } = {
-    published: "bg-green-900/70 text-green-300",
-    confirmed: "bg-green-900/70 text-green-300",
-    attended: "bg-blue-900/70 text-blue-300",
-    draft: "bg-yellow-900/70 text-yellow-300",
-    pending: "bg-yellow-900/70 text-yellow-300",
-    cancelled: "bg-red-900/70 text-red-300",
-    waitlist: "bg-purple-900/70 text-purple-300",
-  };
-  const style = styles[status] || "bg-neutral-700 text-neutral-300";
-  return (
-    <span
-      className={`text-xs font-semibold px-3 py-1 rounded-full capitalize ${style}`}
-    >
-      {status}
-    </span>
-  );
-};
-const RoleBadge = ({ role }: { role: string }) => {
-  const styles =
-    role === "admin"
-      ? "bg-green-900 text-green-300"
-      : "bg-neutral-700 text-neutral-300";
-  return (
-    <span
-      className={`text-sm font-semibold capitalize px-3 py-1 rounded-full ${styles}`}
-    >
-      {role}
-    </span>
-  );
-};
-
-// --- SVG Icons ---
+const UsersIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm6-11a4 4 0 11-8 0 4 4 0 018 0z"
+    />
+  </svg>
+);
+const StickerIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={`w-5 h-5 ${className}`}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"
+    />
+  </svg>
+);
+const FeedbackIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+    />
+  </svg>
+);
+const ProfileIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+    />
+  </svg>
+);
 const PlusIcon = () => (
   <svg
     className="w-4 h-4"
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
   >
     <path
       strokeLinecap="round"
@@ -1350,7 +1428,6 @@ const EditIcon = () => (
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
   >
     <path
       strokeLinecap="round"
@@ -1366,7 +1443,6 @@ const TrashIcon = () => (
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
   >
     <path
       strokeLinecap="round"
@@ -1382,7 +1458,6 @@ const EyeIcon = () => (
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
   >
     <path
       strokeLinecap="round"
@@ -1404,77 +1479,12 @@ const CloseIcon = () => (
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
   >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
       d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
-const CalendarIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-    />
-  </svg>
-);
-const UsersIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm6-11a4 4 0 11-8 0 4 4 0 018 0z"
-    />
-  </svg>
-);
-const FeedbackIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-    />
-  </svg>
-);
-const ProfileIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
     />
   </svg>
 );

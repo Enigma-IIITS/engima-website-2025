@@ -10,7 +10,7 @@
 ./backend/.env.development.local
 ./backend/.env.test.local
 ./backend/.env.production.local
-
+./backend/config/config.env
 # Logs
 ./backend/logs/
 ./backend/*.log

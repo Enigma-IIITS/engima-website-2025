@@ -5,10 +5,14 @@ const morgan = require("morgan");
 const path = require("path");
 const connectDB = require("./config/database");
 const { basicLimiter, authLimiter } = require("./middleware/rateLimiter");
+const seedAdmin = require("./utils/seeder");
 require("dotenv").config();
 
 // Connect to MongoDB
-connectDB();
+connectDB().then(() => {
+  // 🚀 Seed admin after DB connection is successful
+  seedAdmin();
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
