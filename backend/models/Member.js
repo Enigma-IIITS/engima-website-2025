@@ -72,6 +72,31 @@ const memberSchema = new mongoose.Schema(
       maxlength: [2000, "Bio cannot be more than 2000 characters"],
     },
 
+    stickers: [
+      {
+        stickerName: {
+          type: String,
+          required: true,
+        },
+        stickerImage: {
+          url: { type: String, required: true }, // Path like /uploads/stickers/xyz.png
+          filename: String,
+        },
+        message: {
+          type: String,
+          required: true,
+        },
+        awardedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        awardedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     // Role and Position
     roles: [
       {

@@ -16,11 +16,12 @@ const {
   getPaginationData,
   buildPaginationResponse,
 } = require("../utils/response");
+
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 
-// Multer configuration for event poster uploads
+// Multer configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, "../uploads/events"));
@@ -33,9 +34,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // A simplified and robust check for image mimetypes
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
@@ -57,11 +57,14 @@ router.get("/", async (req, res) => {
       upcoming,
       ongoing,
     } = req.query;
-    const filter = { isActive: true };
+
+    const filter = { isActive: { $ne: false } };
+
     if (category) filter.category = category;
     if (eventType) filter.eventType = eventType;
-    if (status) filter.status = status;
+    if (status && status !== "all") filter.status = status;
     if (isFeatured !== undefined) filter.isFeatured = isFeatured === "true";
+
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -69,23 +72,49 @@ router.get("/", async (req, res) => {
         { tags: { $in: [new RegExp(search, "i")] } },
       ];
     }
+
     const now = new Date();
-    if (upcoming === "true") filter.startDate = { $gt: now };
+    if (upcoming === "true") {
+      filter.startDate = { $gt: now };
+      filter.status = "published";
+    }
+
     if (ongoing === "true") {
       filter.startDate = { $lte: now };
       filter.endDate = { $gte: now };
+      filter.status = "published";
     }
+
     const events = await Event.find(filter)
       .populate("organizers", "name email")
       .skip(skip)
       .limit(limit)
       .sort({ startDate: 1 });
+
     const totalCount = await Event.countDocuments(filter);
-    const response = buildPaginationResponse(events, totalCount, page, limit);
-    sendSuccessResponse(res, "Events retrieved successfully", response);
+
+    /**
+     * FIX: Flattening the data structure.
+     * We send 'events' directly under 'data' so the frontend doesn't
+     * have to look into res.data.data.data.
+     */
+    return res.status(200).json({
+      success: true,
+      message: "Events retrieved successfully",
+      data: {
+        data: events, // Kept for admin dashboard compatibility
+        events: events, // Added for easier frontend access
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(totalCount / limit),
+          totalCount,
+          limit,
+        },
+      },
+    });
   } catch (error) {
     console.error("Get events error:", error);
-    sendServerErrorResponse(res, "Error retrieving events");
+    return sendServerErrorResponse(res, "Error retrieving events");
   }
 });
 
@@ -96,7 +125,8 @@ router.get("/:id", async (req, res) => {
     const event = await Event.findById(id)
       .populate("organizers", "name email")
       .populate("registrations.user", "name email");
-    if (!event || !event.isActive) {
+
+    if (!event || event.isActive === false) {
       return sendNotFoundResponse(res, "Event not found");
     }
     sendSuccessResponse(res, "Event retrieved successfully", event);
@@ -116,12 +146,19 @@ router.post(
   handleValidationErrors,
   async (req, res) => {
     try {
-      const eventData = { ...req.body, organizers: [req.user._id] };
+      const eventData = {
+        ...req.body,
+        organizers: [req.user.id],
+        isActive: true,
+      };
+
       if (req.file) {
         eventData.poster = `/uploads/events/${req.file.filename}`;
       }
+
       const event = new Event(eventData);
       await event.save();
+
       const populatedEvent = await Event.findById(event._id).populate(
         "organizers",
         "name email"
@@ -149,7 +186,7 @@ router.put(
       if (!eventToUpdate) return sendNotFoundResponse(res, "Event not found");
 
       const isOrganizer = eventToUpdate.organizers.some((orgId) =>
-        orgId.equals(req.user._id)
+        orgId.equals(req.user.id)
       );
       if (req.user.role !== "admin" && !isOrganizer) {
         return sendForbiddenResponse(res, "Access denied.");
@@ -159,6 +196,7 @@ router.put(
       if (req.file) {
         updateData.poster = `/uploads/events/${req.file.filename}`;
       }
+
       Object.assign(eventToUpdate, updateData);
       const updatedEvent = await eventToUpdate.save();
       await updatedEvent.populate("organizers", "name email");

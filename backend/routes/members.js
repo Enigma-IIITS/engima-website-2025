@@ -7,11 +7,19 @@ const { validateMember, validateDomain } = require("../utils/validation");
 const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 
-// Multer configuration for profile uploads
+// ✅ UPDATED MULTER: Handles dynamic folders and file type validation
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, "../uploads/profiles");
+    // Determine folder based on field name (stickerImage goes to stickers, others to profiles)
+    const folder = file.fieldname === "stickerImage" ? "stickers" : "profiles";
+    const uploadDir = path.join(__dirname, `../uploads/${folder}`);
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
@@ -25,11 +33,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx/;
+    // Allowed extensions
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|webp|svg/;
     const extname = allowedTypes.test(
       path.extname(file.originalname).toLowerCase()
     );
@@ -38,7 +45,11 @@ const upload = multer({
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error("Invalid file type"));
+      cb(
+        new Error(
+          "Invalid file type. Only images and standard documents are allowed."
+        )
+      );
     }
   },
 });
@@ -917,5 +928,56 @@ router.post("/:memberId/feature", auth, admin, async (req, res) => {
     sendErrorResponse(res, "Failed to update feature status", 500);
   }
 });
+router.post(
+  "/award-sticker/:userId",
+  auth,
+  admin,
+  upload.single("stickerImage"),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { stickerName, message } = req.body;
+
+      if (!req.file) {
+        return sendErrorResponse(res, "Please upload a sticker image", 400);
+      }
+
+      const newSticker = {
+        stickerName,
+        message,
+        stickerImage: {
+          url: `/uploads/stickers/${req.file.filename}`,
+          filename: req.file.filename,
+        },
+        awardedBy: req.user.id,
+        awardedAt: Date.now(),
+      };
+
+      let member = await Member.findOne({ user: userId });
+
+      if (!member) {
+        // Find the user to get their name for the required displayName field
+        const user = await User.findById(userId);
+        if (!user) return sendErrorResponse(res, "User not found", 404);
+
+        member = new Member({
+          user: userId,
+          displayName: user.name, // Fulfill schema requirement
+          stickers: [newSticker],
+          // Add a default role if your schema strictly requires it
+          roles: [],
+        });
+      } else {
+        member.stickers.push(newSticker);
+      }
+
+      await member.save();
+      sendSuccessResponse(res, "Sticker awarded successfully", member.stickers);
+    } catch (error) {
+      console.error("Award sticker error:", error);
+      sendErrorResponse(res, "Failed to award sticker", 500);
+    }
+  }
+);
 
 module.exports = router;

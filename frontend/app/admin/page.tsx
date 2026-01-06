@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
+import { StickerIcon } from "lucide-react";
 
 // --- Main Admin Page Component ---
 export default function AdminPage() {
@@ -56,6 +57,12 @@ export default function AdminPage() {
             onClick={() => setActiveTab("users")}
           />
           <TabButton
+            title="Manage Stickers"
+            icon={<StickerIcon />} // Create this icon below
+            isActive={activeTab === "stickers"}
+            onClick={() => setActiveTab("stickers")}
+          />
+          <TabButton
             title="Manage Feedback"
             icon={<FeedbackIcon />}
             isActive={activeTab === "feedback"}
@@ -80,6 +87,7 @@ export default function AdminPage() {
             >
               {activeTab === "events" && <EventManagement />}
               {activeTab === "users" && <UserManagement />}
+              {activeTab === "stickers" && <StickerManagement />}
               {activeTab === "feedback" && <FeedbackManagement />}
               {activeTab === "profile" && <ProfileManagement />}
             </motion.div>
@@ -353,6 +361,118 @@ const UserManagement = () => {
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+const StickerManagement = () => {
+  const { token } = useAuth();
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [formData, setFormData] = useState({ name: "", message: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/users`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.data.success) setUsers(res.data.data.data);
+    };
+    fetchUsers();
+  }, [token]);
+
+  const handleAward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId || !file)
+      return alert("Please select a user and an image");
+
+    setLoading(true);
+    const data = new FormData();
+    data.append("stickerName", formData.name);
+    data.append("message", formData.message);
+    data.append("stickerImage", file);
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/members/award-sticker/${selectedUserId}`,
+        data,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("Sticker awarded successfully!");
+      setFormData({ name: "", message: "" });
+      setFile(null);
+    } catch (err) {
+      alert("Failed to award sticker");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <h2 className="text-2xl font-semibold mb-6">Award a Sticker</h2>
+      <form onSubmit={handleAward} className="space-y-4">
+        <div>
+          <label className="block text-sm mb-1 text-neutral-400">
+            Select Member
+          </label>
+          <select
+            className="w-full bg-black border border-neutral-700 p-2 rounded text-white"
+            onChange={(e) => setSelectedUserId(e.target.value)}
+            value={selectedUserId}
+          >
+            <option value="">-- Select a User --</option>
+            {users.map((u) => (
+              <option key={u._id} value={u._id}>
+                {u.name} ({u.email})
+              </option>
+            ))}
+          </select>
+        </div>
+        <FormInput
+          label="Sticker Title"
+          value={formData.name}
+          onChange={(e: any) =>
+            setFormData({ ...formData, name: e.target.value })
+          }
+          placeholder="e.g. Bug Hunter"
+          required
+        />
+        <FormTextArea
+          label="Award Message"
+          value={formData.message}
+          onChange={(e: any) =>
+            setFormData({ ...formData, message: e.target.value })
+          }
+          placeholder="Why are they getting this?"
+          required
+        />
+
+        <div>
+          <label className="block text-sm mb-1 text-neutral-400">
+            Sticker Image
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-green-600 file:text-black hover:file:bg-green-500"
+          />
+        </div>
+
+        <button
+          disabled={loading}
+          type="submit"
+          className="w-full bg-green-600 text-black font-bold py-2 rounded mt-4"
+        >
+          {loading ? "Awarding..." : "Award Sticker"}
+        </button>
+      </form>
     </div>
   );
 };
