@@ -1,0 +1,1703 @@
+{
+  "info": {
+    "name": "Enigma Backend API",
+    "description": "Complete API collection for Enigma website backend with authentication, events, RSVP, feedback, showcase, and member management",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "event_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rsvp_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "feedback_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "showcase_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "member_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "domain_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.data.token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user._id);",
+                  "    pm.test('Registration successful', function () {",
+                  "        pm.expect(response.success).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123\",\n  \"phone\": \"1234567890\",\n  \"college\": \"IIIT Sri City\",\n  \"year\": 3,\n  \"branch\": \"CSE\",\n  \"studentId\": \"IIITS2022001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.data.token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user._id);",
+                  "    pm.test('Login successful', function () {",
+                  "        pm.expect(response.success).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Events",
+      "item": [
+        {
+          "name": "Create Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('event_id', response.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Web Development Workshop\",\n  \"description\": \"Learn modern web development with React and Node.js\",\n  \"shortDescription\": \"Hands-on web development workshop\",\n  \"category\": \"workshop\",\n  \"eventType\": \"hybrid\",\n  \"startDate\": \"2025-10-15T10:00:00.000Z\",\n  \"endDate\": \"2025-10-15T17:00:00.000Z\",\n  \"registrationStartDate\": \"2025-10-01T00:00:00.000Z\",\n  \"registrationEndDate\": \"2025-10-14T23:59:59.000Z\",\n  \"venue\": \"Tech Lab, IIIT Sri City\",\n  \"onlineLink\": \"https://meet.google.com/abc-defg-hij\",\n  \"maxParticipants\": 50,\n  \"registrationFee\": 0,\n  \"prerequisites\": [\"Basic programming knowledge\", \"Laptop required\"],\n  \"agenda\": [\n    {\n      \"time\": \"10:00 AM\",\n      \"title\": \"Introduction to React\",\n      \"description\": \"Basic concepts and setup\"\n    },\n    {\n      \"time\": \"2:00 PM\",\n      \"title\": \"Building a Full Stack App\",\n      \"description\": \"Hands-on project development\"\n    }\n  ],\n  \"speakers\": [\n    {\n      \"name\": \"Jane Smith\",\n      \"bio\": \"Senior Full Stack Developer\",\n      \"image\": \"https://example.com/jane.jpg\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            }
+          }
+        },
+        {
+          "name": "Get All Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events?page=1&limit=10&category=workshop&status=upcoming",
+              "host": ["{{base_url}}"],
+              "path": ["events"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "category",
+                  "value": "workshop"
+                },
+                {
+                  "key": "status",
+                  "value": "upcoming"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Event by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Advanced Web Development Workshop\",\n  \"description\": \"Learn modern web development with React, Node.js, and best practices\",\n  \"maxParticipants\": 60\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎟️ RSVP/Registration",
+      "item": [
+        {
+          "name": "Register for Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('rsvp_id', response.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"contactInfo\": {\n    \"email\": \"john.doe@example.com\",\n    \"phone\": \"1234567890\",\n    \"emergencyContact\": {\n      \"name\": \"Jane Doe\",\n      \"phone\": \"0987654321\",\n      \"relation\": \"Mother\"\n    }\n  },\n  \"additionalInfo\": {\n    \"teamName\": \"Code Warriors\",\n    \"teamMembers\": [\n      {\n        \"name\": \"John Doe\",\n        \"email\": \"john.doe@example.com\",\n        \"phone\": \"1234567890\",\n        \"role\": \"Team Leader\"\n      },\n      {\n        \"name\": \"Alice Smith\",\n        \"email\": \"alice.smith@example.com\",\n        \"phone\": \"1234567891\",\n        \"role\": \"Developer\"\n      }\n    ],\n    \"dietaryRestrictions\": [\"Vegetarian\"],\n    \"specialNeeds\": \"Wheelchair accessibility required\",\n    \"tshirtSize\": \"L\",\n    \"accommodationNeeded\": false,\n    \"customFields\": {\n      \"experience\": \"Intermediate\",\n      \"portfolio\": \"https://johndoe.dev\",\n      \"expectations\": \"Learn advanced React patterns\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rsvp",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp"]
+            }
+          }
+        },
+        {
+          "name": "Get My Registrations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/rsvp/my-registrations?page=1&limit=10&status=confirmed",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "my-registrations"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "confirmed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Event Registrations (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/rsvp/event/{{event_id}}?page=1&limit=50&export=false",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "event", "{{event_id}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "export",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Event Registrations (CSV)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/rsvp/event/{{event_id}}?export=true",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "event", "{{event_id}}"],
+              "query": [
+                {
+                  "key": "export",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Registration",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactInfo\": {\n    \"phone\": \"1234567899\"\n  },\n  \"additionalInfo\": {\n    \"specialNeeds\": \"No special requirements\",\n    \"tshirtSize\": \"XL\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rsvp/{{rsvp_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "{{rsvp_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Check-in Participant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkInCode\": \"ABC123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rsvp/{{rsvp_id}}/check-in",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "{{rsvp_id}}", "check-in"]
+            }
+          }
+        },
+        {
+          "name": "Get QR Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/rsvp/{{rsvp_id}}/qr-code",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "{{rsvp_id}}", "qr-code"]
+            }
+          }
+        },
+        {
+          "name": "Get Registration Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/rsvp/stats/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "stats", "{{event_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Registration",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/rsvp/{{rsvp_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["rsvp", "{{rsvp_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Feedback",
+      "item": [
+        {
+          "name": "Submit Event Feedback",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('feedback_id', response.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"event\",\n  \"event\": \"{{event_id}}\",\n  \"title\": \"Excellent Workshop Experience\",\n  \"content\": \"The web development workshop was extremely well organized and informative. The hands-on approach really helped me understand React concepts better. The speakers were knowledgeable and engaging.\",\n  \"ratings\": {\n    \"overall\": 5,\n    \"organization\": 5,\n    \"content\": 4,\n    \"venue\": 4,\n    \"speakers\": 5,\n    \"networking\": 4\n  },\n  \"categories\": {\n    \"liked\": [\n      \"Hands-on coding sessions\",\n      \"Knowledgeable speakers\",\n      \"Good pace of teaching\",\n      \"Interactive Q&A sessions\"\n    ],\n    \"improvements\": [\n      \"Provide better snacks\",\n      \"More time for networking\",\n      \"Additional practice exercises\"\n    ],\n    \"suggestions\": [\n      \"Include advanced topics in future workshops\",\n      \"Provide take-home resources\",\n      \"Record sessions for later reference\"\n    ]\n  },\n  \"priority\": \"medium\",\n  \"urgency\": \"low\",\n  \"contactPreferences\": {\n    \"followUp\": true,\n    \"anonymous\": false,\n    \"preferredMethod\": \"email\"\n  },\n  \"metadata\": {\n    \"page\": \"/events/workshop\",\n    \"section\": \"feedback-form\",\n    \"location\": \"Tech Lab\"\n  },\n  \"tags\": [\"workshop\", \"web-development\", \"react\", \"positive\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["feedback"]
+            }
+          }
+        },
+        {
+          "name": "Submit General Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"website\",\n  \"title\": \"Website Navigation Issue\",\n  \"content\": \"The navigation menu on mobile devices is not working properly. When I try to access the events page, the menu doesn't collapse and overlaps with the content.\",\n  \"priority\": \"high\",\n  \"urgency\": \"medium\",\n  \"contactPreferences\": {\n    \"followUp\": true,\n    \"anonymous\": false,\n    \"preferredMethod\": \"email\"\n  },\n  \"metadata\": {\n    \"userAgent\": \"Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)\",\n    \"platform\": \"mobile\",\n    \"page\": \"/events\",\n    \"section\": \"navigation\"\n  },\n  \"tags\": [\"website\", \"mobile\", \"navigation\", \"bug\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["feedback"]
+            }
+          }
+        },
+        {
+          "name": "Get All Feedback (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback?type=event&status=pending&priority=high&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["feedback"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "event"
+                },
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "priority",
+                  "value": "high"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Feedback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback/my-feedback?type=event&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "my-feedback"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "event"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Event Feedback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback/event/{{event_id}}?ratings=true&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "event", "{{event_id}}"],
+              "query": [
+                {
+                  "key": "ratings",
+                  "value": "true"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resolve Feedback (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"The navigation issue has been fixed in the latest website update. The mobile menu now properly collapses and doesn't overlap with content.\",\n  \"actionsTaken\": [\n    \"Updated mobile CSS styles\",\n    \"Fixed JavaScript menu toggle\",\n    \"Tested on multiple mobile devices\",\n    \"Deployed fix to production\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback/{{feedback_id}}/resolve",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "{{feedback_id}}", "resolve"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Following up on this feedback. The issue has been reproduced and assigned to the development team.\",\n  \"isInternal\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback/{{feedback_id}}/note",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "{{feedback_id}}", "note"]
+            }
+          }
+        },
+        {
+          "name": "Vote on Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vote\": \"helpful\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback/{{feedback_id}}/vote",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "{{feedback_id}}", "vote"]
+            }
+          }
+        },
+        {
+          "name": "Get Feedback Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback/analytics/summary?period=30d&eventId={{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "analytics", "summary"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30d"
+                },
+                {
+                  "key": "eventId",
+                  "value": "{{event_id}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎨 Showcase",
+      "item": [
+        {
+          "name": "Create Showcase Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('showcase_id', response.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "AI-Powered Task Management App",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "A comprehensive task management application built with React and Node.js, featuring AI-powered task prioritization, smart scheduling, and collaborative workspaces. The app uses machine learning algorithms to analyze user behavior and suggest optimal task scheduling.",
+                  "type": "text"
+                },
+                {
+                  "key": "shortDescription",
+                  "value": "AI-powered task management with smart scheduling and collaboration features",
+                  "type": "text"
+                },
+                {
+                  "key": "type",
+                  "value": "project",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "artificial_intelligence",
+                  "type": "text"
+                },
+                {
+                  "key": "technologies",
+                  "value": "[{\"name\":\"React\",\"proficiency\":\"advanced\"},{\"name\":\"Node.js\",\"proficiency\":\"advanced\"},{\"name\":\"Python\",\"proficiency\":\"intermediate\"},{\"name\":\"TensorFlow\",\"proficiency\":\"intermediate\"},{\"name\":\"MongoDB\",\"proficiency\":\"advanced\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "skills",
+                  "value": "[\"Frontend Development\",\"Backend Development\",\"Machine Learning\",\"UI/UX Design\",\"Database Design\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "completed",
+                  "type": "text"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-06-01",
+                  "type": "text"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-09-15",
+                  "type": "text"
+                },
+                {
+                  "key": "duration",
+                  "value": "3.5 months",
+                  "type": "text"
+                },
+                {
+                  "key": "links",
+                  "value": "{\"github\":\"https://github.com/johndoe/ai-task-manager\",\"live\":\"https://ai-tasks.johndoe.dev\",\"demo\":\"https://youtu.be/demovideolink\",\"documentation\":\"https://docs.ai-tasks.johndoe.dev\"}",
+                  "type": "text"
+                },
+                {
+                  "key": "teamSize",
+                  "value": "3",
+                  "type": "text"
+                },
+                {
+                  "key": "isTeamProject",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "collaborators",
+                  "value": "[{\"role\":\"Frontend Developer\",\"contribution\":\"React components and UI design\"},{\"role\":\"ML Engineer\",\"contribution\":\"AI algorithms and model training\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "achievements",
+                  "value": "[{\"title\":\"Best Innovation Award\",\"description\":\"Won first place at University Tech Fest 2024\",\"date\":\"2024-09-20\",\"organization\":\"IIIT Sri City\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "visibility",
+                  "value": "public",
+                  "type": "text"
+                },
+                {
+                  "key": "tags",
+                  "value": "[\"AI\",\"React\",\"Node.js\",\"Task Management\",\"Machine Learning\",\"Productivity\"]",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/showcase",
+              "host": ["{{base_url}}"],
+              "path": ["showcase"]
+            }
+          }
+        },
+        {
+          "name": "Get All Showcase Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/showcase?type=project&category=artificial_intelligence&status=completed&page=1&limit=12&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["showcase"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "project"
+                },
+                {
+                  "key": "category",
+                  "value": "artificial_intelligence"
+                },
+                {
+                  "key": "status",
+                  "value": "completed"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "12"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Showcase Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/showcase?search=AI task management&technologies=React,Node.js&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["showcase"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "AI task management"
+                },
+                {
+                  "key": "technologies",
+                  "value": "React,Node.js"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Featured Showcase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/showcase/featured?limit=6",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "featured"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "6"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Trending Showcase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/showcase/trending?days=7&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "trending"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Showcase by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/showcase/category/web_development?limit=12",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "category", "web_development"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "12"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Showcase Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/showcase/my-showcase?page=1&limit=10&status=completed",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "my-showcase"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "completed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Showcase Item Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/showcase/{{showcase_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "{{showcase_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Like Showcase Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/showcase/{{showcase_id}}/like",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "{{showcase_id}}", "like"]
+            }
+          }
+        },
+        {
+          "name": "Add Comment to Showcase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is an amazing project! The AI-powered task prioritization feature is really innovative. Great work on the user interface as well. Would love to see the source code.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/showcase/{{showcase_id}}/comment",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "{{showcase_id}}", "comment"]
+            }
+          }
+        },
+        {
+          "name": "Update Showcase Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "AI-Powered Task Management App v2.0",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Enhanced version of the task management application with improved AI algorithms, better user interface, and new collaboration features.",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "deployed",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/showcase/{{showcase_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "{{showcase_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Approve Showcase Item (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Excellent project showcasing innovative use of AI in productivity tools. Approved for public display.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/showcase/{{showcase_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "{{showcase_id}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Feature Showcase Item (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/showcase/{{showcase_id}}/feature",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "{{showcase_id}}", "feature"]
+            }
+          }
+        },
+        {
+          "name": "Get Showcase Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/showcase/stats/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["showcase", "stats", "analytics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Members & Domains",
+      "item": [
+        {
+          "name": "Create Domain (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('domain_id', response.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Web Development\",\n  \"code\": \"WEB\",\n  \"description\": \"Focuses on frontend and backend web technologies including React, Angular, Node.js, and modern web frameworks. Responsible for developing and maintaining web applications and websites.\",\n  \"icon\": \"fa-code\",\n  \"color\": \"#3498db\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/members/domains",
+              "host": ["{{base_url}}"],
+              "path": ["members", "domains"]
+            }
+          }
+        },
+        {
+          "name": "Get All Domains",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members/domains?active=true",
+              "host": ["{{base_url}}"],
+              "path": ["members", "domains"],
+              "query": [
+                {
+                  "key": "active",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create/Update Member Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('member_id', response.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "displayName",
+                  "value": "John Doe",
+                  "type": "text"
+                },
+                {
+                  "key": "tagline",
+                  "value": "Full Stack Developer & AI Enthusiast",
+                  "type": "text"
+                },
+                {
+                  "key": "bio",
+                  "value": "Passionate about creating innovative solutions that bridge the gap between technology and user experience. Experienced in full-stack development with expertise in React, Node.js, and machine learning. Love working on projects that make a real impact.",
+                  "type": "text"
+                },
+                {
+                  "key": "academicInfo",
+                  "value": "{\"year\":3,\"branch\":\"Computer Science\",\"rollNumber\":\"IIITS2022001\",\"cgpa\":8.7,\"graduationYear\":2025}",
+                  "type": "text"
+                },
+                {
+                  "key": "contact",
+                  "value": "{\"email\":\"john.doe@example.com\",\"phone\":\"1234567890\",\"linkedIn\":\"https://linkedin.com/in/johndoe\",\"github\":\"https://github.com/johndoe\",\"portfolio\":\"https://johndoe.dev\"}",
+                  "type": "text"
+                },
+                {
+                  "key": "skills",
+                  "value": "[{\"name\":\"React\",\"proficiency\":\"advanced\",\"yearsOfExperience\":3},{\"name\":\"Node.js\",\"proficiency\":\"advanced\",\"yearsOfExperience\":2},{\"name\":\"Python\",\"proficiency\":\"intermediate\",\"yearsOfExperience\":2},{\"name\":\"Machine Learning\",\"proficiency\":\"intermediate\",\"yearsOfExperience\":1}]",
+                  "type": "text"
+                },
+                {
+                  "key": "experience",
+                  "value": "[{\"title\":\"Frontend Developer Intern\",\"company\":\"TechCorp Solutions\",\"type\":\"internship\",\"startDate\":\"2024-06-01\",\"endDate\":\"2024-08-31\",\"description\":\"Developed responsive web applications using React and TypeScript\",\"technologies\":[\"React\",\"TypeScript\",\"Tailwind CSS\"]}]",
+                  "type": "text"
+                },
+                {
+                  "key": "projects",
+                  "value": "[{\"title\":\"E-commerce Website\",\"description\":\"Full-stack e-commerce platform with React frontend and Node.js backend\",\"role\":\"Lead Developer\",\"technologies\":[\"React\",\"Node.js\",\"MongoDB\"],\"githubUrl\":\"https://github.com/johndoe/ecommerce\",\"liveUrl\":\"https://ecommerce.johndoe.dev\",\"status\":\"completed\",\"teamSize\":3}]",
+                  "type": "text"
+                },
+                {
+                  "key": "achievements",
+                  "value": "[{\"title\":\"Best Project Award\",\"description\":\"Won first place in University Tech Fest for AI project\",\"category\":\"competition\",\"date\":\"2024-03-15\",\"organization\":\"IIIT Sri City\",\"level\":\"university\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "interests",
+                  "value": "[\"Machine Learning\",\"Web Development\",\"Open Source\",\"UI/UX Design\",\"Cloud Computing\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "domains",
+                  "value": "[\"Web Development\",\"Artificial Intelligence\",\"Software Engineering\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "privacy",
+                  "value": "{\"profileVisibility\":\"public\",\"showEmail\":false,\"showPhone\":false,\"showProjects\":true,\"showAchievements\":true}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["members"]
+            }
+          }
+        },
+        {
+          "name": "Get All Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members?domain={{domain_id}}&status=active&page=1&limit=20&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["members"],
+              "query": [
+                {
+                  "key": "domain",
+                  "value": "{{domain_id}}"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members?search=full stack developer&skills=React,Node.js&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["members"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "full stack developer"
+                },
+                {
+                  "key": "skills",
+                  "value": "React,Node.js"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leadership Team",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members/leadership",
+              "host": ["{{base_url}}"],
+              "path": ["members", "leadership"]
+            }
+          }
+        },
+        {
+          "name": "Get Featured Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members/featured?limit=6",
+              "host": ["{{base_url}}"],
+              "path": ["members", "featured"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "6"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Members by Domain",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members/domain/{{domain_id}}?position=domain_head",
+              "host": ["{{base_url}}"],
+              "path": ["members", "domain", "{{domain_id}}"],
+              "query": [
+                {
+                  "key": "position",
+                  "value": "domain_head"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Alumni Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members/alumni?graduationYear=2024&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["members", "alumni"],
+              "query": [
+                {
+                  "key": "graduationYear",
+                  "value": "2024"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Member Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/members/profile/{{member_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["members", "profile", "{{member_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/members/my-profile",
+              "host": ["{{base_url}}"],
+              "path": ["members", "my-profile"]
+            }
+          }
+        },
+        {
+          "name": "Add Role to Member (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": \"domain_head\",\n  \"domainId\": \"{{domain_id}}\",\n  \"responsibilities\": [\n    \"Lead web development domain activities\",\n    \"Mentor junior developers\",\n    \"Coordinate with other domain heads\",\n    \"Organize workshops and training sessions\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/members/{{member_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["members", "{{member_id}}", "role"]
+            }
+          }
+        },
+        {
+          "name": "Verify Member (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/members/{{member_id}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["members", "{{member_id}}", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Feature Member (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/members/{{member_id}}/feature",
+              "host": ["{{base_url}}"],
+              "path": ["members", "{{member_id}}", "feature"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Analytics & Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "API Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-update base URL if needed",
+          "if (!pm.collectionVariables.get('base_url')) {",
+          "    pm.collectionVariables.set('base_url', 'http://localhost:3000/api');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test for all requests",
+          "pm.test('Response time is less than 5000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "pm.test('Response has required headers', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});",
+          "",
+          "// Log response for debugging",
+          "if (pm.response.code >= 400) {",
+          "    console.log('Error Response:', pm.response.json());",
+          "}"
+        ]
+      }
+    }
+  ]
+}
