@@ -13,7 +13,7 @@ export default function FocusCardsDemo5() {
     },
     {
       title: "Member",
-      src: "/blank.jpg",
+      src: "/aaryaman.jpg",
     },
     {
       title: "Member",
@@ -41,7 +41,7 @@ export default function FocusCardsDemo5() {
     },
     {
       title: "Member",
-      src: "/blank.jpg",
+      src: "/aarav.jpg",
     },
     {
       title: "Member",

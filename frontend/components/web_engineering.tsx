@@ -21,7 +21,7 @@ export default function FocusCardsDemo2() {
     },
     {
       title: "Core Member",
-      src: "/blank.png",
+      src: "/vaitish.jpg",
     },
     // Add or remove cards to test centering
   

@@ -5,7 +5,7 @@ export default function FocusCardsDemo3() {
   const cards = [
     {
       title: "Team Lead",
-      src: "/blank.jpg",
+      src: "/harsha.jpg",
     },
     {
       title: "Core Member",
