@@ -62,24 +62,32 @@ const Footer = () => {
           <div className="flex items-center space-x-6">
             <a
               href="#"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-neutral-500 hover:text-green-500 transition-colors duration-300"
             >
               <DiscordIcon />
             </a>
             <a
-              href="#"
+              href="https://www.instagram.com/enigmaiiits/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-neutral-500 hover:text-green-500 transition-colors duration-300"
             >
               <InstagramIcon />
             </a>
             <a
-              href="#"
+              href="https://www.linkedin.com/company/enigmaiiits/posts/?feedView=all"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-neutral-500 hover:text-green-500 transition-colors duration-300"
             >
               <LinkedinIcon />
             </a>
             <a
-              href="#"
+              href="https://github.com/Enigma-IIITS"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-neutral-500 hover:text-green-500 transition-colors duration-300"
             >
               <GithubIcon />
