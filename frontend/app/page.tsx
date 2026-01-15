@@ -11,7 +11,7 @@ export default function HomePage() {
     { name: "Domains", link: "#domains" },
     { name: "RSVP", link: "#rsvp" },
     { name: "Events", link: "#events" },
-    { name: "Team", link: "#Team" },
+    { name: "Team", link: "#Lead_and_colead" },
   ];
   return (
     <>

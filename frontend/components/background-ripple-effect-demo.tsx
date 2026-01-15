@@ -222,13 +222,14 @@ export default function BackgroundRippleEffectDemo() {
         <div id="events" className="pointer-events-auto">
           <PastEvents />
         </div>
-        <div id="Lead_and_colead" className="pointer-events-auto">
+
+        <div id="Lead_and_colead" className="pointer-events-auto mb-10">
           <FocusCardsDemo />
         </div>
-        <div id="System_Software" className="pointer-events-auto">
+        <div id="System_Software" className="pointer-events-auto mb-20">
           <FocusCardsDemo1 />
         </div>
-        <div id="web_engineering" className="pointer-events-auto">
+        <div id="web_engineering" className="pointer-events-auto mb-10">
           <FocusCardsDemo2 />
         </div>
         <div id="video_editing" className="pointer-events-auto">
@@ -237,7 +238,7 @@ export default function BackgroundRippleEffectDemo() {
         <div id="Design_team" className="pointer-events-auto">
           <FocusCardsDemo4 />
         </div>
-        <div id="Pr_and_management" className="pointer-events-auto">
+        <div id="Pr_and_management" className="pointer-events-auto mb-30">
           <FocusCardsDemo5 />
         </div>
         <div id="feedback" className="pointer-events-auto">
