@@ -61,7 +61,7 @@ const Footer = () => {
           {/* --- FIX: Redesigned the icon links for a cleaner, more attractive look --- */}
           <div className="flex items-center space-x-6">
             <a
-              href="#"
+              href="https://discord.gg/CSh7eKVVsY"
               target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-500 hover:text-green-500 transition-colors duration-300"
