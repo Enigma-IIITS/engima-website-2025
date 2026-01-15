@@ -32,7 +32,8 @@ export default function UpcomingEvents() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState<any | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
+
   const id = useId();
 
   const { user, token } = useAuth();

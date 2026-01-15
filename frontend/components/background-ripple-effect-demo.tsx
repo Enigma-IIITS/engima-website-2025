@@ -4,13 +4,17 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { TextGenerateEffect } from "./ui/text-generate-effect";
 import { TypewriterEffectSmooth } from "./ui/typewriter-effect";
 import AboutUsEvervaultCard from "./AboutUs";
-import FocusCardsDemo from "./Teams";
-import FocusCardsDemo1 from "./Teams1";
+import FocusCardsDemo from "./Lead_and_colead";
+import FocusCardsDemo1 from "./System_Software";
 import ClubDomains from "./ClubDomains";
 import PastEvents from "./PastEvents";
 import Footer from "./Footer";
 import FeedbackForm from "./feedback";
 import UpcomingEventsExpandableCard from "./expandable-card-demo-standard";
+import FocusCardsDemo2 from "./web_engineering";
+import FocusCardsDemo3 from "./video_editing";
+import FocusCardsDemo4 from "./Design_team";
+import FocusCardsDemo5 from "./PR_and_Management";
 
 // Responsive grid sizes
 const MOBILE_ROWS = 12;
@@ -218,11 +222,24 @@ export default function BackgroundRippleEffectDemo() {
         <div id="events" className="pointer-events-auto">
           <PastEvents />
         </div>
-        <div id="Team" className="pointer-events-auto">
+
+        <div id="Lead_and_colead" className="pointer-events-auto mb-10">
           <FocusCardsDemo />
         </div>
-        <div id="Team1" className="pointer-events-auto">
+        <div id="System_Software" className="pointer-events-auto mb-20">
           <FocusCardsDemo1 />
+        </div>
+        <div id="web_engineering" className="pointer-events-auto mb-10">
+          <FocusCardsDemo2 />
+        </div>
+        <div id="video_editing" className="pointer-events-auto">
+          <FocusCardsDemo3 />
+        </div>
+        <div id="Design_team" className="pointer-events-auto">
+          <FocusCardsDemo4 />
+        </div>
+        <div id="Pr_and_management" className="pointer-events-auto mb-30">
+          <FocusCardsDemo5 />
         </div>
         <div id="feedback" className="pointer-events-auto">
           <FeedbackForm />

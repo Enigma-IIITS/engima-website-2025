@@ -24,14 +24,14 @@ export const Card = React.memo(
       onMouseEnter={() => setHovered(index)}
       onMouseLeave={() => setHovered(null)}
       className={cn(
-        "rounded-lg relative bg-gray-900 overflow-hidden h-60 md:h-96 w-full transition-all duration-300 ease-out border border-gray-800",
+        "rounded-lg relative bg-gray-900 overflow-hidden h-72 md:h-80 w-full transition-all duration-300 ease-out border border-gray-800",
         hovered !== null && hovered !== index && "blur-sm scale-[0.98]"
       )}
     >
       <img
         src={card.src}
         alt={card.title}
-        className="object-cover absolute inset-0"
+        className="object-cover absolute inset-0 w-full h-full"
       />
       <div
         className={cn(
@@ -39,7 +39,7 @@ export const Card = React.memo(
           hovered === index ? "opacity-100" : "opacity-0"
         )}
       >
-        <div className="text-xl md:text-2xl font-medium bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-200">
+        <div className="text-xl font-medium bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-200">
           {card.title}
         </div>
       </div>
@@ -49,44 +49,46 @@ export const Card = React.memo(
 
 Card.displayName = "Card";
 
-type Card = {
+type CardData = {
   title: string;
   src: string;
 };
 
 export function FocusCards({
   cards,
-  heading = "Our Highlights",
-  subheading = "Explore our most captivating moments",
+  heading = "",
+  subheading = "",
 }: {
-  cards: Card[];
+  cards: CardData[];
   heading?: string;
   subheading?: string;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      className="w-full py-16 px-4 sm:px-6 lg:px-8 bg-black"
-    >
+    <div className="w-full py-8 px-4 sm:px-6 lg:px-8 bg-black">
       {/* Headings */}
-      <div className="max-w-5xl mx-auto mb-12 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
-          {heading}
-        </h2>
-        <p className="text-lg text-gray-300">{subheading}</p>
-      </div>
+      {(heading || subheading) && (
+        <div className="max-w-5xl mx-auto mb-10 text-center">
+          {heading && (
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              {heading}
+            </h2>
+          )}
+          {subheading && <p className="text-lg text-gray-300">{subheading}</p>}
+        </div>
+      )}
 
-      {/* Cards Container - Center aligned */}
-      <div className="flex flex-wrap justify-center gap-6 mx-auto max-w-6xl">
+      {/* Cards Container - Gap increased to 6 */}
+      <div className="flex flex-wrap justify-center gap-6 mx-auto max-w-7xl">
         {cards.map((card, index) => (
           <div
             key={`${card.title}-${index}`}
-            className="w-full md:w-[calc(33.333%-1.5rem)] max-w-md"
+            /* Updated width math:
+               sm (2 cols): calc(50% - 1.5rem) -> 1.5rem is the 24px gap
+               lg (4 cols): calc(25% - 1.2rem) -> slightly higher subtraction to ensure fit
+            */
+            className="w-full sm:w-[calc(50%-1.5rem)] lg:w-[calc(25%-1.2rem)]"
           >
             <Card
               card={card}
@@ -97,6 +99,6 @@ export function FocusCards({
           </div>
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 }
