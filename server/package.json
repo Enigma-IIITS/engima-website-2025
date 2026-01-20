@@ -2,10 +2,10 @@
   "name": "enigma-backend",
   "version": "1.0.0",
   "description": "Backend API for Enigma website",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "dotenv nodemon server.js",
+    "start": "node index.js",
+    "dev": "dotenv nodemon index.js",
     "seed": "dotenv node scripts/seedDatabase.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
